@@ -71,3 +71,10 @@ service shortener-api {
 ```bash
 goctl api go -api shortener.api -dir . -style=goZero
 ```
+
+3. 根据数据表生成 model 层代码
+```bash
+goctl model mysql datasource -url="root:root@tcp(127.0.0.1:3306)/sql_test" -table="short_url_map" -dir="./model" -c
+
+goctl model mysql datasource -url="root:root@tcp(127.0.0.1:3306)/sql_test" -table="sequence" -dir="./model" -c
+```
