@@ -95,3 +95,18 @@ Starting server at 0.0.0.0:8888...
 
 6. 修改配置结构体和配置文件
 注意： 两边要对齐！
+
+## 参数校验
+
+1. go-zero 使用 [validator](https://pkg.go.dev/github.com/go-playground/validator/v10)
+
+使用 go get 安装
+```bash
+go get github.com/go-playground/validator/v10
+```
+导入
+```go
+import "github.com/go-playground/validator/v10"
+```
+
+在 api 中为结构体添加 validate tag，并添加校验规则

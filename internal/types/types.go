@@ -4,7 +4,7 @@
 package types
 
 type ConvertRequest struct {
-	LongUrl string `json:"long_url"`
+	LongUrl string `json:"long_url" validate:"required,url"`
 }
 
 type ConvertResponse struct {
@@ -12,7 +12,7 @@ type ConvertResponse struct {
 }
 
 type ShowRequest struct {
-	ShortUrl string `path:"short_url"`
+	ShortUrl string `path:"short_url" validate:"required,url"`
 }
 
 type ShowResponse struct {
