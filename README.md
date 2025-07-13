@@ -34,6 +34,40 @@ CREATE TABLE `short_url_map` (
 2. 搭建 go-zero 框架的骨架
 
 编写 `api` 文件，使用 goctl 命令生成代码
-```api
+```go
+/**
+* @fileoverview
+* This file is part of the shortener API service.
+* It defines the service and its syntax version.
+*/
+syntax = "v1"
 
+type ConvertRequest {
+	LongUrl string `json:"long_url"`
+}
+
+type ConvertResponse {
+	ShortUrl string `json:"short_url"`
+}
+
+type ShowRequest {
+	ShortUrl string `path:"short_url"`
+}
+
+type ShowResponse {
+	LongUrl string `json:"long_url"`
+}
+
+service shortener-api {
+	@handler ConvertHandler
+	post /convert (ConvertRequest) returns (ConvertResponse)
+
+	@handler ShowHandler
+	get /:short_url (ShowRequest) returns (ShowResponse)
+}
+```
+
+根据 api 文件生成代码
+```bash
+goctl api go -api shortener.api -dir . -style=goZero
 ```
