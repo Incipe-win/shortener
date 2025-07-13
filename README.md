@@ -78,3 +78,17 @@ goctl model mysql datasource -url="root:root@tcp(127.0.0.1:3306)/sql_test" -tabl
 
 goctl model mysql datasource -url="root:root@tcp(127.0.0.1:3306)/sql_test" -table="sequence" -dir="./model" -c
 ```
+
+4. 下载项目依赖
+```bash
+go mod tidy
+```
+
+5. 运行项目
+```bash
+go run .
+```
+看到如下输出表示项目成功启动。
+```bash
+Starting server at 0.0.0.0:8888...
+```
