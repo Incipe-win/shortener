@@ -1,0 +1,31 @@
+/**
+* @fileoverview
+* This file is part of the shortener API service.
+* It defines the service and its syntax version.
+*/
+syntax = "v1"
+
+type ConvertRequest {
+	LongUrl string `json:"long_url"`
+}
+
+type ConvertResponse {
+	ShortUrl string `json:"short_url"`
+}
+
+type ShowRequest {
+	ShortUrl string `path:"short_url"`
+}
+
+type ShowResponse {
+	LongUrl string `json:"long_url"`
+}
+
+service shortener-api {
+	@handler ConvertHandler
+	post /convert (ConvertRequest) returns (ConvertResponse)
+
+	@handler ShowHandler
+	get /:short_url (ShowRequest) returns (ShowResponse)
+}
+
