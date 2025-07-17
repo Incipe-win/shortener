@@ -26,6 +26,14 @@ func NewShowLogic(ctx context.Context, svcCtx *svc.ServiceContext) *ShowLogic {
 }
 
 func (l *ShowLogic) Show(req *types.ShowRequest) (resp *types.ShowResponse, err error) {
+	exist, err := l.svcCtx.Filter.Exists([]byte(req.ShortUrl))
+	if err != nil {
+		logx.Errorw("bloom filter check failed", logx.LogField{Value: err.Error(), Key: "err"})
+		return nil, err
+	}
+	if !exist {
+		return nil, errors.New("404")
+	}
 	u, err := l.svcCtx.ShortUrlModel.FindOneBySurl(l.ctx, sql.NullString{String: req.ShortUrl, Valid: true})
 	if err != nil {
 		if err == sql.ErrNoRows {

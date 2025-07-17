@@ -98,6 +98,13 @@ func (l *ConvertLogic) Convert(req *types.ConvertRequest) (resp *types.ConvertRe
 	}); err != nil {
 		logx.Errorw("failed to insert short URL map", logx.LogField{Key: "error", Value: err.Error()})
 	}
+
+	// 4.1 将短链接存入 bloom filter
+	if err := l.svcCtx.Filter.Add([]byte(shortUrl)); err != nil {
+		logx.Errorw("failed to add short URL to bloom filter", logx.LogField{Key: "error", Value: err.Error()})
+		return nil, err
+	}
+
 	// 5. 返回响应
 	// 5.1 返回的是 短域名+短链接  q1mi.cn/1En
 	shortUrl = l.svcCtx.Config.ShortDoamin + "/" + shortUrl
