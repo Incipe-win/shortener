@@ -130,3 +130,6 @@ import "github.com/go-playground/validator/v10"
 goctl model mysql datasource -url="root:root1234@tcp(127.0.0.1:3306)/db3" -table="short_url_map"  -dir="./model" -c
 ```
 4. 修改svccontext层代码
+
+# 参考
+[Go语言微服务和云原生课程](https://github.com/Q1mi/go-micro-service-and-cloud-native-course)
