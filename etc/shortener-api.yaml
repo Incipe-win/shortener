@@ -7,3 +7,7 @@ Sequence:
   DSN: root:root@tcp(127.0.0.1:3306)/sql_test?charset=utf8mb4&parseTime=True&loc=Local
 CacheRedis:
   - Host: 127.0.0.1:6379
+BaseString: J0rs12O5TUV8IW7D9aBdXeCfghiMQj3klmop6qtuvbcwx4zAEFGHKLNnPRYSZy
+ShortUrlBlackList:
+  ["version", "fuxk", "stupid", "convert", "health", "api", "css", "js"]
+ShortDoamin: shortener.com

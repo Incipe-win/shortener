@@ -17,4 +17,9 @@ type Config struct {
 	}
 
 	CacheRedis cache.CacheConf
+
+	BaseString string // bas62指定基础字符串
+
+	ShortUrlBlackList []string
+	ShortDoamin       string
 }
