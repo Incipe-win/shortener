@@ -45,13 +45,18 @@ type (
 	}
 
 	ShortUrlMap struct {
-		Id       uint64         `db:"id"`        // 主键
-		CreateAt time.Time      `db:"create_at"` // 创建时间
-		CreateBy string         `db:"create_by"` // 创建者
-		IsDel    uint64         `db:"is_del"`    // 是否删除：0正常1删除
-		Lurl     sql.NullString `db:"lurl"`      // 长链接
-		Md5      sql.NullString `db:"md5"`       // 长链接MD5
-		Surl     sql.NullString `db:"surl"`      // 短链接
+		Id         uint64         `db:"id"`          // 主键
+		CreateAt   time.Time      `db:"create_at"`   // 创建时间
+		CreateBy   string         `db:"create_by"`   // 创建者
+		IsDel      uint64         `db:"is_del"`      // 是否删除：0正常1删除
+		Lurl       sql.NullString `db:"lurl"`        // 长链接
+		Md5        sql.NullString `db:"md5"`         // 长链接MD5
+		Surl       sql.NullString `db:"surl"`        // 短链接
+		AiSummary  sql.NullString `db:"ai_summary"`  // AI生成的页面摘要
+		AiKeywords sql.NullString `db:"ai_keywords"` // AI提取的关键词(JSON数组)
+		AiSlug     sql.NullString `db:"ai_slug"`     // AI生成的语义化短链
+		RiskLevel  sql.NullString `db:"risk_level"`  // 安全等级
+		RiskReason sql.NullString `db:"risk_reason"` // 风险原因
 	}
 )
 
@@ -140,8 +145,8 @@ func (m *defaultShortUrlMapModel) Insert(ctx context.Context, data *ShortUrlMap)
 	sqlTestShortUrlMapMd5Key := fmt.Sprintf("%s%v", cacheSqlTestShortUrlMapMd5Prefix, data.Md5)
 	sqlTestShortUrlMapSurlKey := fmt.Sprintf("%s%v", cacheSqlTestShortUrlMapSurlPrefix, data.Surl)
 	ret, err := m.ExecCtx(ctx, func(ctx context.Context, conn sqlx.SqlConn) (result sql.Result, err error) {
-		query := fmt.Sprintf("insert into %s (%s) values (?, ?, ?, ?, ?)", m.table, shortUrlMapRowsExpectAutoSet)
-		return conn.ExecCtx(ctx, query, data.CreateBy, data.IsDel, data.Lurl, data.Md5, data.Surl)
+		query := fmt.Sprintf("insert into %s (%s) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", m.table, shortUrlMapRowsExpectAutoSet)
+		return conn.ExecCtx(ctx, query, data.CreateBy, data.IsDel, data.Lurl, data.Md5, data.Surl, data.AiSummary, data.AiKeywords, data.AiSlug, data.RiskLevel, data.RiskReason)
 	}, sqlTestShortUrlMapIdKey, sqlTestShortUrlMapMd5Key, sqlTestShortUrlMapSurlKey)
 	return ret, err
 }
@@ -157,7 +162,7 @@ func (m *defaultShortUrlMapModel) Update(ctx context.Context, newData *ShortUrlM
 	sqlTestShortUrlMapSurlKey := fmt.Sprintf("%s%v", cacheSqlTestShortUrlMapSurlPrefix, data.Surl)
 	_, err = m.ExecCtx(ctx, func(ctx context.Context, conn sqlx.SqlConn) (result sql.Result, err error) {
 		query := fmt.Sprintf("update %s set %s where `id` = ?", m.table, shortUrlMapRowsWithPlaceHolder)
-		return conn.ExecCtx(ctx, query, newData.CreateBy, newData.IsDel, newData.Lurl, newData.Md5, newData.Surl, newData.Id)
+		return conn.ExecCtx(ctx, query, newData.CreateBy, newData.IsDel, newData.Lurl, newData.Md5, newData.Surl, newData.AiSummary, newData.AiKeywords, newData.AiSlug, newData.RiskLevel, newData.RiskReason, newData.Id)
 	}, sqlTestShortUrlMapIdKey, sqlTestShortUrlMapMd5Key, sqlTestShortUrlMapSurlKey)
 	return err
 }

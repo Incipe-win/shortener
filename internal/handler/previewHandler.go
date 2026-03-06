@@ -10,24 +10,20 @@ import (
 	"github.com/zeromicro/go-zero/rest/httpx"
 )
 
-func ShowHandler(svcCtx *svc.ServiceContext) http.HandlerFunc {
+func PreviewHandler(svcCtx *svc.ServiceContext) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		var req types.ShowRequest
+		var req types.PreviewRequest
 		if err := httpx.Parse(r, &req); err != nil {
 			httpx.ErrorCtx(r.Context(), w, err)
 			return
 		}
 
-		l := logic.NewShowLogic(r.Context(), svcCtx)
-		resp, err := l.Show(&req)
+		l := logic.NewPreviewLogic(r.Context(), svcCtx)
+		resp, err := l.Preview(&req)
 		if err != nil {
 			httpx.ErrorCtx(r.Context(), w, err)
 		} else {
-			// 如果有安全警告，添加到响应头中
-			if resp.RiskWarning != "" {
-				w.Header().Set("X-Safety-Warning", resp.RiskWarning)
-			}
-			http.Redirect(w, r, resp.LongUrl, http.StatusFound)
+			httpx.OkJsonCtx(r.Context(), w, resp)
 		}
 	}
 }

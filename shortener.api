@@ -1,7 +1,7 @@
 /**
 * @fileoverview
-* This file is part of the shortener API service.
-* It defines the service and its syntax version.
+* Smart-Shortener Gateway API Definition
+* 基于微服务与大模型的智能短链安全网关
 */
 syntax = "v1"
 
@@ -14,11 +14,24 @@ type ConvertResponse {
 }
 
 type ShowRequest {
-	ShortUrl string `path:"short_url" validate:"required,url"`
+	ShortUrl string `path:"short_url"`
 }
 
 type ShowResponse {
-	LongUrl string `json:"long_url"`
+	LongUrl     string `json:"long_url"`
+	RiskWarning string `json:"risk_warning,omitempty"`
+}
+
+type PreviewRequest {
+	ShortUrl string `path:"short_url"`
+}
+
+type PreviewResponse {
+	ShortUrl  string   `json:"short_url"`
+	LongUrl   string   `json:"long_url"`
+	Summary   string   `json:"summary"`
+	Keywords  []string `json:"keywords"`
+	RiskLevel string   `json:"risk_level"`
 }
 
 service shortener-api {
@@ -27,5 +40,7 @@ service shortener-api {
 
 	@handler ShowHandler
 	get /:short_url (ShowRequest) returns (ShowResponse)
-}
 
+	@handler PreviewHandler
+	get /preview/:short_url (PreviewRequest) returns (PreviewResponse)
+}

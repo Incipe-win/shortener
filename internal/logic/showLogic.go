@@ -7,8 +7,11 @@ import (
 
 	"shortener/internal/svc"
 	"shortener/internal/types"
+	"shortener/pkg/metrics"
+	"shortener/pkg/otel"
 
 	"github.com/zeromicro/go-zero/core/logx"
+	"go.opentelemetry.io/otel/attribute"
 )
 
 type ShowLogic struct {
@@ -26,23 +29,57 @@ func NewShowLogic(ctx context.Context, svcCtx *svc.ServiceContext) *ShowLogic {
 }
 
 func (l *ShowLogic) Show(req *types.ShowRequest) (resp *types.ShowResponse, err error) {
+	// 创建 tracing span
+	ctx, span := otel.Tracer().Start(l.ctx, "ShowLogic.Show")
+	defer span.End()
+
+	// Bloom Filter 前置检查
 	exist, err := l.svcCtx.Filter.Exists([]byte(req.ShortUrl))
 	if err != nil {
 		logx.Errorw("bloom filter check failed", logx.LogField{Value: err.Error(), Key: "err"})
+		metrics.ShowTotal.WithLabelValues("error").Inc()
 		return nil, err
 	}
 	if !exist {
+		metrics.BloomFilterHits.WithLabelValues("miss").Inc()
+		metrics.ShowTotal.WithLabelValues("not_found").Inc()
 		return nil, errors.New("404")
 	}
-	u, err := l.svcCtx.ShortUrlModel.FindOneBySurl(l.ctx, sql.NullString{String: req.ShortUrl, Valid: true})
+	metrics.BloomFilterHits.WithLabelValues("hit").Inc()
+
+	u, err := l.svcCtx.ShortUrlModel.FindOneBySurl(ctx, sql.NullString{String: req.ShortUrl, Valid: true})
 	if err != nil {
 		if err == sql.ErrNoRows {
+			metrics.ShowTotal.WithLabelValues("not_found").Inc()
 			return nil, errors.New("short URL not found")
 		}
 		logx.Errorw("ShortUrlModel.FindOneBySurl failed", logx.LogField{Value: err.Error(), Key: "err"})
+		metrics.ShowTotal.WithLabelValues("error").Inc()
 		return nil, err
 	}
-	return &types.ShowResponse{
+
+	// 【新增】安全等级检查
+	span.SetAttributes(attribute.String("risk_level", u.RiskLevel.String))
+	if u.RiskLevel.Valid && u.RiskLevel.String == "danger" {
+		metrics.SafetyBlocked.Inc()
+		metrics.ShowTotal.WithLabelValues("blocked").Inc()
+		logx.Infow("redirect blocked due to danger risk level",
+			logx.LogField{Key: "surl", Value: req.ShortUrl},
+			logx.LogField{Key: "risk_reason", Value: u.RiskReason.String})
+		return nil, errors.New("this link has been flagged as potentially unsafe and cannot be accessed")
+	}
+
+	metrics.ShowTotal.WithLabelValues("success").Inc()
+
+	// 构建响应，附带安全警告信息（供 handler 层使用）
+	result := &types.ShowResponse{
 		LongUrl: u.Lurl.String,
-	}, nil
+	}
+
+	// 如果是 warning 级别，通过 RiskWarning 字段传递警告信息
+	if u.RiskLevel.Valid && u.RiskLevel.String == "warning" {
+		result.RiskWarning = u.RiskReason.String
+	}
+
+	return result, nil
 }

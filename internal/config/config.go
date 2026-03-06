@@ -22,4 +22,25 @@ type Config struct {
 
 	ShortUrlBlackList []string
 	ShortDoamin       string
+
+	// LLM 大模型配置
+	LLM struct {
+		Enabled bool
+		BaseURL string // API 地址，如 https://api.openai.com/v1
+		APIKey  string
+		Model   string // 如 gpt-4o-mini
+	}
+
+	// Safety 安全巡检配置
+	Safety struct {
+		Enabled          bool
+		BlackListDomains []string // 黑名单域名列表
+	}
+
+	// Otel 可观测性配置（避免与 RestConf 内置 Telemetry 冲突）
+	Otel struct {
+		Name     string
+		Endpoint string
+		Sampler  float64
+	}
 }
