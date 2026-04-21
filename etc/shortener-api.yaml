@@ -46,7 +46,7 @@ Auth:
   Expiry: 86400
   Admin:
     Username: "admin"
-    Password: "${ADMIN_PASSWORD:admin123}"
+    Password: "admin123"
 
 # CORS 跨域配置
 CORS:

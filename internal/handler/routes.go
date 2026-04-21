@@ -41,32 +41,32 @@ func RegisterHandlers(server *rest.Server, serverCtx *svc.ServiceContext) {
 		[]rest.Route{
 			{
 				Method:  http.MethodPost,
-				Path:    "/api/auth/login",
+				Path:    "/auth/login",
 				Handler: cors(LoginHandler(c)),
 			},
 			{
 				Method:  http.MethodPost,
-				Path:    "/api/auth/logout",
+				Path:    "/auth/logout",
 				Handler: cors(LogoutHandler()),
 			},
 			{
 				Method:  http.MethodOptions,
-				Path:    "/api/auth/login",
+				Path:    "/auth/login",
 				Handler: cors(func(w http.ResponseWriter, r *http.Request) {}),
 			},
 			{
 				Method:  http.MethodOptions,
-				Path:    "/api/auth/logout",
+				Path:    "/auth/logout",
 				Handler: cors(func(w http.ResponseWriter, r *http.Request) {}),
 			},
 			{
 				Method:  http.MethodOptions,
-				Path:    "/api/auth/me",
+				Path:    "/auth/me",
 				Handler: cors(func(w http.ResponseWriter, r *http.Request) {}),
 			},
 			{
 				Method:  http.MethodOptions,
-				Path:    "/api/links",
+				Path:    "/links",
 				Handler: cors(func(w http.ResponseWriter, r *http.Request) {}),
 			},
 		},
@@ -77,12 +77,12 @@ func RegisterHandlers(server *rest.Server, serverCtx *svc.ServiceContext) {
 		[]rest.Route{
 			{
 				Method:  http.MethodGet,
-				Path:    "/api/auth/me",
+				Path:    "/auth/me",
 				Handler: cors(jwtAuth(MeHandler())),
 			},
 			{
 				Method:  http.MethodGet,
-				Path:    "/api/links",
+				Path:    "/links",
 				Handler: cors(jwtAuth(LinksHandler(serverCtx))),
 			},
 		},
