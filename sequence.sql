@@ -5,4 +5,4 @@ CREATE TABLE `sequence` (
     `timestamp` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     PRIMARY KEY (`id`),
     UNIQUE KEY `idx_uniq_stub` (`stub`)
-) ENGINE = MyISAM DEFAULT CHARSET = utf8 COMMENT = '序号表';
+) ENGINE = MyISAM DEFAULT CHARSET = utf8mb4 COMMENT = '序号表';

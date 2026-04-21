@@ -43,4 +43,15 @@ type Config struct {
 		Endpoint string
 		Sampler  float64
 	}
+
+	// Kafka 消息队列配置
+	Kafka struct {
+		Enabled bool
+		Brokers []string
+		Topics  struct {
+			AIAnalysis  string `json:",default=ai-analysis"`
+			ClickEvent  string `json:",default=click-events"`
+			SafetyAlert string `json:",default=safety-alerts"`
+		}
+	}
 }

@@ -2,11 +2,11 @@ Name: shortener-api
 Host: 0.0.0.0
 Port: 8888
 ShortUrlDB:
-  DSN: root:root@tcp(127.0.0.1:3306)/sql_test?charset=utf8mb4&parseTime=True&loc=Local
+  DSN: root:root@tcp(127.0.0.1:13306)/sql_test?charset=utf8mb4&parseTime=True&loc=Local
 Sequence:
-  DSN: root:root@tcp(127.0.0.1:3306)/sql_test?charset=utf8mb4&parseTime=True&loc=Local
+  DSN: root:root@tcp(127.0.0.1:13306)/sql_test?charset=utf8mb4&parseTime=True&loc=Local
 CacheRedis:
-  - Host: 127.0.0.1:6379
+  - Host: 127.0.0.1:16379
 BaseString: J0rs12O5TUV8IW7D9aBdXeCfghiMQj3klmop6qtuvbcwx4zAEFGHKLNnPRYSZy
 ShortUrlBlackList:
   ["version", "fuxk", "stupid", "convert", "health", "api", "css", "js", "preview", "metrics"]
@@ -27,5 +27,16 @@ Safety:
 # 可观测性配置
 Otel:
   Name: "shortener-api"
-  Endpoint: ""
+  Endpoint: "localhost:4317"
   Sampler: 1.0
+
+# Kafka 消息队列配置
+Kafka:
+  Enabled: true
+  Brokers:
+    - "127.0.0.1:9092"
+  Topics:
+    AIAnalysis: "ai-analysis"
+    ClickEvent: "click-events"
+    SafetyAlert: "safety-alerts"
+

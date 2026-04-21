@@ -6,14 +6,17 @@ import (
 	"net/http"
 
 	"shortener/internal/config"
+	"shortener/internal/consumer"
 	"shortener/internal/handler"
 	"shortener/internal/svc"
 	"shortener/pkg/base62"
+	"shortener/pkg/mq"
 	myotel "shortener/pkg/otel"
 
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/zeromicro/go-zero/core/conf"
 	"github.com/zeromicro/go-zero/core/logx"
+	"github.com/zeromicro/go-zero/core/service"
 	"github.com/zeromicro/go-zero/rest"
 )
 
@@ -40,7 +43,6 @@ func main() {
 	}
 
 	server := rest.MustNewServer(c.RestConf)
-	defer server.Stop()
 
 	ctx := svc.NewServiceContext(c)
 	handler.RegisterHandlers(server, ctx)
@@ -52,6 +54,50 @@ func main() {
 		Handler: promhttp.Handler().ServeHTTP,
 	})
 
+	// 使用 ServiceGroup 管理 HTTP Server 和 Kafka Consumers 的生命周期
+	group := service.NewServiceGroup()
+	defer group.Stop()
+
+	// 注册 HTTP Server
+	group.Add(server)
+
+	// 注册 Kafka Consumers（仅在 Kafka 启用时）
+	if c.Kafka.Enabled {
+		brokers := c.Kafka.Brokers
+
+		// AI 分析消费者
+		if ctx.LLMClient != nil {
+			aiConsumer := mq.NewKafkaConsumer(
+				brokers,
+				c.Kafka.Topics.AIAnalysis,
+				"shortener-ai-analysis",
+				consumer.AIAnalysisHandler(ctx.LLMClient, ctx.ShortUrlModel),
+			)
+			group.Add(aiConsumer)
+			logx.Info("Kafka AI analysis consumer registered")
+		}
+
+		// 点击事件消费者
+		clickConsumer := mq.NewKafkaConsumer(
+			brokers,
+			c.Kafka.Topics.ClickEvent,
+			"shortener-click-events",
+			consumer.ClickEventHandler(),
+		)
+		group.Add(clickConsumer)
+		logx.Info("Kafka click event consumer registered")
+
+		// 安全告警消费者
+		safetyConsumer := mq.NewKafkaConsumer(
+			brokers,
+			c.Kafka.Topics.SafetyAlert,
+			"shortener-safety-alerts",
+			consumer.SafetyAlertHandler(),
+		)
+		group.Add(safetyConsumer)
+		logx.Info("Kafka safety alert consumer registered")
+	}
+
 	fmt.Printf("Starting server at %s:%d...\n", c.Host, c.Port)
-	server.Start()
+	group.Start()
 }

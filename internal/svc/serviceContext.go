@@ -4,6 +4,7 @@ import (
 	"shortener/internal/config"
 	"shortener/model"
 	"shortener/pkg/llm"
+	"shortener/pkg/mq"
 
 	"github.com/zeromicro/go-zero/core/bloom"
 	"github.com/zeromicro/go-zero/core/stores/redis"
@@ -24,6 +25,9 @@ type ServiceContext struct {
 
 	// 安全: 黑名单域名
 	BlackListDomains map[string]struct{}
+
+	// Kafka 消息生产者（可能为 nil，取决于配置）
+	KafkaProducer *mq.KafkaProducer
 }
 
 func NewServiceContext(c config.Config) *ServiceContext {
@@ -57,6 +61,12 @@ func NewServiceContext(c config.Config) *ServiceContext {
 		blackListDomains[domain] = struct{}{}
 	}
 
+	// 初始化 Kafka Producer
+	var kafkaProducer *mq.KafkaProducer
+	if c.Kafka.Enabled {
+		kafkaProducer = mq.NewKafkaProducer(c.Kafka.Brokers)
+	}
+
 	return &ServiceContext{
 		Config:            c,
 		ShortUrlModel:     shortUrlModel,
@@ -65,6 +75,7 @@ func NewServiceContext(c config.Config) *ServiceContext {
 		Filter:            filter,
 		LLMClient:         llmClient,
 		BlackListDomains:  blackListDomains,
+		KafkaProducer:     kafkaProducer,
 	}
 }
 

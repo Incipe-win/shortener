@@ -4,10 +4,13 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"time"
 
+	"shortener/internal/ctxdata"
 	"shortener/internal/svc"
 	"shortener/internal/types"
 	"shortener/pkg/metrics"
+	"shortener/pkg/mq"
 	"shortener/pkg/otel"
 
 	"github.com/zeromicro/go-zero/core/logx"
@@ -71,6 +74,9 @@ func (l *ShowLogic) Show(req *types.ShowRequest) (resp *types.ShowResponse, err 
 
 	metrics.ShowTotal.WithLabelValues("success").Inc()
 
+	// 【新增】发送点击事件到 Kafka
+	l.sendClickEvent(req.ShortUrl)
+
 	// 构建响应，附带安全警告信息（供 handler 层使用）
 	result := &types.ShowResponse{
 		LongUrl: u.Lurl.String,
@@ -82,4 +88,34 @@ func (l *ShowLogic) Show(req *types.ShowRequest) (resp *types.ShowResponse, err 
 	}
 
 	return result, nil
+}
+
+// sendClickEvent 向 Kafka 发送点击事件消息
+func (l *ShowLogic) sendClickEvent(surl string) {
+	if l.svcCtx.KafkaProducer == nil {
+		return
+	}
+
+	// 从 context 中提取 HTTP 请求信息
+	clientIP, _ := l.ctx.Value(ctxdata.KeyClientIP).(string)
+	userAgent, _ := l.ctx.Value(ctxdata.KeyUserAgent).(string)
+	referer, _ := l.ctx.Value(ctxdata.KeyReferer).(string)
+
+	topic := l.svcCtx.Config.Kafka.Topics.ClickEvent
+	msg := mq.ClickEventMessage{
+		Surl:      surl,
+		ClientIP:  clientIP,
+		UserAgent: userAgent,
+		Referer:   referer,
+		Timestamp: time.Now().Unix(),
+	}
+
+	if err := l.svcCtx.KafkaProducer.Send(l.ctx, topic, surl, msg); err != nil {
+		logx.Errorw("failed to send click event to Kafka",
+			logx.LogField{Key: "surl", Value: surl},
+			logx.LogField{Key: "err", Value: err.Error()})
+		metrics.KafkaProduceTotal.WithLabelValues(topic, "error").Inc()
+		return
+	}
+	metrics.KafkaProduceTotal.WithLabelValues(topic, "success").Inc()
 }

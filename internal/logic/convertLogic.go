@@ -15,6 +15,7 @@ import (
 	"shortener/pkg/llm"
 	"shortener/pkg/md5"
 	"shortener/pkg/metrics"
+	"shortener/pkg/mq"
 	"shortener/pkg/otel"
 	"shortener/pkg/safety"
 	"shortener/pkg/scraper"
@@ -66,9 +67,18 @@ func (l *ConvertLogic) Convert(req *types.ConvertRequest) (resp *types.ConvertRe
 			metrics.SafetyBlocked.Inc()
 			metrics.ConvertTotal.WithLabelValues("blocked").Inc()
 			span.SetAttributes(attribute.String("safety.risk_level", "danger"))
+
+			// 发送安全告警到 Kafka
+			l.sendSafetyAlert(req.LongUrl, "", safetyResult.RiskLevel, safetyResult.Reason)
+
 			return nil, fmt.Errorf("URL blocked by safety check: %s", safetyResult.Reason)
 		}
 		span.SetAttributes(attribute.String("safety.risk_level", safetyResult.RiskLevel))
+
+		// warning 级别也发送告警
+		if safetyResult.RiskLevel == "warning" {
+			l.sendSafetyAlert(req.LongUrl, "", safetyResult.RiskLevel, safetyResult.Reason)
+		}
 	}
 
 	// 1.3 判断之前是否已经转链过（数据库中是否已经存在该长链接）
@@ -145,13 +155,19 @@ func (l *ConvertLogic) Convert(req *types.ConvertRequest) (resp *types.ConvertRe
 		return nil, err
 	}
 
-	// 4.2 【新增】异步 AI 分析：抓取页面 → LLM 分析 → 更新数据库
+	// 4.2 异步 AI 分析：优先走 Kafka，降级走 goroutine
 	if l.svcCtx.LLMClient != nil {
-		surl := shortUrl
-		longUrl := req.LongUrl
-		llmClient := l.svcCtx.LLMClient
-		shortUrlModel := l.svcCtx.ShortUrlModel
-		go asyncAIAnalysis(surl, longUrl, llmClient, shortUrlModel)
+		if l.svcCtx.KafkaProducer != nil {
+			// 优先通过 Kafka 发送 AI 分析任务
+			l.sendAIAnalysisMessage(shortUrl, req.LongUrl)
+		} else {
+			// Kafka 未启用，降级走 goroutine
+			surl := shortUrl
+			longUrl := req.LongUrl
+			llmClient := l.svcCtx.LLMClient
+			shortUrlModel := l.svcCtx.ShortUrlModel
+			go asyncAIAnalysis(surl, longUrl, llmClient, shortUrlModel)
+		}
 	}
 
 	// 5. 返回响应
@@ -163,7 +179,56 @@ func (l *ConvertLogic) Convert(req *types.ConvertRequest) (resp *types.ConvertRe
 	}, nil
 }
 
-// asyncAIAnalysis 异步执行 AI 页面分析
+// sendAIAnalysisMessage 向 Kafka 发送 AI 分析任务消息
+func (l *ConvertLogic) sendAIAnalysisMessage(surl, longUrl string) {
+	topic := l.svcCtx.Config.Kafka.Topics.AIAnalysis
+	msg := mq.AIAnalysisMessage{
+		Surl:    surl,
+		LongUrl: longUrl,
+	}
+
+	start := time.Now()
+	if err := l.svcCtx.KafkaProducer.Send(l.ctx, topic, surl, msg); err != nil {
+		logx.Errorw("failed to send AI analysis message to Kafka",
+			logx.LogField{Key: "surl", Value: surl},
+			logx.LogField{Key: "err", Value: err.Error()})
+		metrics.KafkaProduceTotal.WithLabelValues(topic, "error").Inc()
+
+		// Kafka 发送失败，降级走 goroutine
+		llmClient := l.svcCtx.LLMClient
+		shortUrlModel := l.svcCtx.ShortUrlModel
+		go asyncAIAnalysis(surl, longUrl, llmClient, shortUrlModel)
+		return
+	}
+	metrics.KafkaProduceTotal.WithLabelValues(topic, "success").Inc()
+	metrics.KafkaProduceLatency.WithLabelValues(topic).Observe(time.Since(start).Seconds())
+}
+
+// sendSafetyAlert 向 Kafka 发送安全告警消息
+func (l *ConvertLogic) sendSafetyAlert(longUrl, surl, riskLevel, reason string) {
+	if l.svcCtx.KafkaProducer == nil {
+		return
+	}
+
+	topic := l.svcCtx.Config.Kafka.Topics.SafetyAlert
+	msg := mq.SafetyAlertMessage{
+		Surl:      surl,
+		LongUrl:   longUrl,
+		RiskLevel: riskLevel,
+		Reason:    reason,
+		Timestamp: time.Now().Unix(),
+	}
+
+	if err := l.svcCtx.KafkaProducer.Send(l.ctx, topic, longUrl, msg); err != nil {
+		logx.Errorw("failed to send safety alert to Kafka",
+			logx.LogField{Key: "err", Value: err.Error()})
+		metrics.KafkaProduceTotal.WithLabelValues(topic, "error").Inc()
+		return
+	}
+	metrics.KafkaProduceTotal.WithLabelValues(topic, "success").Inc()
+}
+
+// asyncAIAnalysis 异步执行 AI 页面分析（降级方案，Kafka 未启用时使用）
 func asyncAIAnalysis(surl, longUrl string, llmClient *llm.Client, shortUrlModel model.ShortUrlMapModel) {
 	// 使用独立 context，不受请求 context 生命周期影响
 	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)

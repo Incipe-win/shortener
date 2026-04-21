@@ -47,6 +47,42 @@ var (
 			Help: "Total number of requests blocked by safety checks",
 		},
 	)
+
+	// KafkaProduceTotal Kafka 消息生产总数
+	KafkaProduceTotal = prometheus.NewCounterVec(
+		prometheus.CounterOpts{
+			Name: "shortener_kafka_produce_total",
+			Help: "Total number of Kafka messages produced",
+		},
+		[]string{"topic", "status"}, // success / error
+	)
+
+	// KafkaConsumeTotal Kafka 消息消费总数
+	KafkaConsumeTotal = prometheus.NewCounterVec(
+		prometheus.CounterOpts{
+			Name: "shortener_kafka_consume_total",
+			Help: "Total number of Kafka messages consumed",
+		},
+		[]string{"topic", "status"}, // success / error
+	)
+
+	// KafkaProduceLatency Kafka 消息生产延迟
+	KafkaProduceLatency = prometheus.NewHistogramVec(
+		prometheus.HistogramOpts{
+			Name:    "shortener_kafka_produce_latency_seconds",
+			Help:    "Latency of Kafka produce operations in seconds",
+			Buckets: prometheus.DefBuckets,
+		},
+		[]string{"topic"},
+	)
+
+	// ClickEventTotal 点击事件总数
+	ClickEventTotal = prometheus.NewCounter(
+		prometheus.CounterOpts{
+			Name: "shortener_click_event_total",
+			Help: "Total number of click events received",
+		},
+	)
 )
 
 func init() {
@@ -56,5 +92,10 @@ func init() {
 		BloomFilterHits,
 		LLMLatency,
 		SafetyBlocked,
+		KafkaProduceTotal,
+		KafkaConsumeTotal,
+		KafkaProduceLatency,
+		ClickEventTotal,
 	)
 }
+

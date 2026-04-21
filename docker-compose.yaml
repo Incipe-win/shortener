@@ -1,0 +1,68 @@
+
+
+services:
+  # MySQL 数据库
+  mysql:
+    image: mysql:8.4
+    container_name: shortener-mysql
+    command: --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: sql_test
+    ports:
+      - "13306:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+      # 自动执行初始化 SQL（首次启动时）
+      - ./short_url_map.sql:/docker-entrypoint-initdb.d/01_short_url_map.sql
+      - ./sequence.sql:/docker-entrypoint-initdb.d/02_sequence.sql
+      - ./alter_short_url_map.sql:/docker-entrypoint-initdb.d/03_alter_short_url_map.sql
+      - ./alter_click_count.sql:/docker-entrypoint-initdb.d/04_alter_click_count.sql
+    healthcheck:
+      test: ["CMD", "mysql", "-h", "127.0.0.1", "-uroot", "-proot", "-e", "SELECT 1"]
+      interval: 3s
+      timeout: 3s
+      retries: 30
+      start_period: 30s
+
+  # Redis 缓存
+  redis:
+    image: redis:alpine
+    container_name: shortener-redis
+    ports:
+      - "16379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 3s
+      timeout: 3s
+      retries: 10
+
+  # Kafka 消息队列 (KRaft 模式，无需 Zookeeper)
+  kafka:
+    image: apache/kafka:latest
+    container_name: shortener-kafka
+    environment:
+      KAFKA_NODE_ID: 1
+      KAFKA_PROCESS_ROLES: broker,controller
+      KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9092,CONTROLLER://0.0.0.0:9093
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://127.0.0.1:9092
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka:9093
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
+    ports:
+      - "9092:9092"
+
+  # Jaeger 链路追踪（OpenTelemetry 采集 + 可视化 UI）
+  jaeger:
+    image: jaegertracing/all-in-one:latest
+    container_name: shortener-jaeger
+    environment:
+      COLLECTOR_OTLP_ENABLED: "true"
+    ports:
+      - "16686:16686"   # Jaeger UI
+      - "4317:4317"     # OTLP gRPC（应用上报用）
+
+volumes:
+  mysql_data:

@@ -1,8 +1,10 @@
 package handler
 
 import (
+	"context"
 	"net/http"
 
+	"shortener/internal/ctxdata"
 	"shortener/internal/logic"
 	"shortener/internal/svc"
 	"shortener/internal/types"
@@ -18,7 +20,13 @@ func ShowHandler(svcCtx *svc.ServiceContext) http.HandlerFunc {
 			return
 		}
 
-		l := logic.NewShowLogic(r.Context(), svcCtx)
+		// 将 HTTP 请求信息注入 context，供 ShowLogic 发送点击事件
+		ctx := r.Context()
+		ctx = context.WithValue(ctx, ctxdata.KeyClientIP, clientIP(r))
+		ctx = context.WithValue(ctx, ctxdata.KeyUserAgent, r.UserAgent())
+		ctx = context.WithValue(ctx, ctxdata.KeyReferer, r.Referer())
+
+		l := logic.NewShowLogic(ctx, svcCtx)
 		resp, err := l.Show(&req)
 		if err != nil {
 			httpx.ErrorCtx(r.Context(), w, err)
@@ -30,4 +38,16 @@ func ShowHandler(svcCtx *svc.ServiceContext) http.HandlerFunc {
 			http.Redirect(w, r, resp.LongUrl, http.StatusFound)
 		}
 	}
+}
+
+// clientIP 提取客户端真实 IP
+func clientIP(r *http.Request) string {
+	// 优先从常见代理头获取
+	if ip := r.Header.Get("X-Real-IP"); ip != "" {
+		return ip
+	}
+	if ip := r.Header.Get("X-Forwarded-For"); ip != "" {
+		return ip
+	}
+	return r.RemoteAddr
 }
