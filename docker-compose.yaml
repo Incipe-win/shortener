@@ -82,6 +82,7 @@ services:
       - ./sequence.sql:/docker-entrypoint-initdb.d/02_sequence.sql
       - ./alter_short_url_map.sql:/docker-entrypoint-initdb.d/03_alter_short_url_map.sql
       - ./alter_click_count.sql:/docker-entrypoint-initdb.d/04_alter_click_count.sql
+      - ./alter_user.sql:/docker-entrypoint-initdb.d/05_alter_user.sql
     networks:
       - shortener-net
     restart: unless-stopped

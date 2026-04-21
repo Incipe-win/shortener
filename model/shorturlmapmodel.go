@@ -20,10 +20,11 @@ type (
 		shortUrlMapModel
 		FindAll() ([]string, error)
 		UpdateAIFields(ctx context.Context, surl string, summary string, keywords []string, slug string, riskLevel string, riskReason string) error
-		FindList(ctx context.Context, page, pageSize int, search string) ([]*ShortUrlMap, error)
-		Count(ctx context.Context, search string) (int64, error)
+		FindList(ctx context.Context, userID uint64, page, pageSize int, search string) ([]*ShortUrlMap, error)
+		Count(ctx context.Context, userID uint64, search string) (int64, error)
 		IncrementClickCount(ctx context.Context, surl string) error
-		GetStats(ctx context.Context) (map[string]int64, error)
+		GetStats(ctx context.Context, userID uint64) (map[string]int64, error)
+		CountUnregistered(ctx context.Context) (int64, error)
 	}
 
 	// ShortUrlMapWithStats extends ShortUrlMap with click_count for queries
@@ -31,6 +32,7 @@ type (
 		Id         uint64
 		CreateAt   time.Time
 		CreateBy   string
+		UserID     sql.NullInt64
 		IsDel      uint64
 		Lurl       sql.NullString
 		Md5        sql.NullString
@@ -88,21 +90,29 @@ func (s *customShortUrlMapModel) UpdateAIFields(ctx context.Context, surl string
 	return err
 }
 
-// FindList 分页查询链接列表（包含 click_count）
-func (s *customShortUrlMapModel) FindList(ctx context.Context, page, pageSize int, search string) ([]*ShortUrlMap, error) {
+// FindList 分页查询链接列表（包含 click_count，按用户过滤）
+func (s *customShortUrlMapModel) FindList(ctx context.Context, userID uint64, page, pageSize int, search string) ([]*ShortUrlMap, error) {
 	offset := (page - 1) * pageSize
 
-	// 使用自定义查询包含 click_count
+	// 构建用户过滤条件
+	userWhere := ""
+	var userArgs []interface{}
+	if userID > 0 {
+		userWhere = " AND `user_id` = ?"
+		userArgs = append(userArgs, userID)
+	}
+
 	var items []*ShortUrlMapWithStats
 	var err error
 
 	if search != "" {
-		query := fmt.Sprintf("select `id`,`create_at`,`create_by`,`is_del`,`lurl`,`md5`,`surl`,`ai_summary`,`ai_keywords`,`ai_slug`,`risk_level`,`risk_reason`,`click_count` from %s where `is_del` = 0 and (`surl` like ? or `lurl` like ?) order by `id` desc limit ?, ?", s.table)
-		like := "%" + search + "%"
-		err = s.CachedConn.QueryRowsNoCacheCtx(ctx, &items, query, like, like, offset, pageSize)
+		query := fmt.Sprintf("select `id`,`create_at`,`create_by`,`user_id`,`is_del`,`lurl`,`md5`,`surl`,`ai_summary`,`ai_keywords`,`ai_slug`,`risk_level`,`risk_reason`,`click_count` from %s where `is_del` = 0"+userWhere+" and (`surl` like ? or `lurl` like ?) order by `id` desc limit ?, ?", s.table)
+		args := append(userArgs, "%"+search+"%", "%"+search+"%", offset, pageSize)
+		err = s.CachedConn.QueryRowsNoCacheCtx(ctx, &items, query, args...)
 	} else {
-		query := fmt.Sprintf("select `id`,`create_at`,`create_by`,`is_del`,`lurl`,`md5`,`surl`,`ai_summary`,`ai_keywords`,`ai_slug`,`risk_level`,`risk_reason`,`click_count` from %s where `is_del` = 0 order by `id` desc limit ?, ?", s.table)
-		err = s.CachedConn.QueryRowsNoCacheCtx(ctx, &items, query, offset, pageSize)
+		query := fmt.Sprintf("select `id`,`create_at`,`create_by`,`user_id`,`is_del`,`lurl`,`md5`,`surl`,`ai_summary`,`ai_keywords`,`ai_slug`,`risk_level`,`risk_reason`,`click_count` from %s where `is_del` = 0"+userWhere+" order by `id` desc limit ?, ?", s.table)
+		args := append(userArgs, offset, pageSize)
+		err = s.CachedConn.QueryRowsNoCacheCtx(ctx, &items, query, args...)
 	}
 	if err != nil {
 		return nil, err
@@ -115,6 +125,7 @@ func (s *customShortUrlMapModel) FindList(ctx context.Context, page, pageSize in
 			Id:         item.Id,
 			CreateAt:   item.CreateAt,
 			CreateBy:   item.CreateBy,
+			UserID:     item.UserID,
 			IsDel:      item.IsDel,
 			Lurl:       item.Lurl,
 			Md5:        item.Md5,
@@ -130,18 +141,26 @@ func (s *customShortUrlMapModel) FindList(ctx context.Context, page, pageSize in
 	return resp, nil
 }
 
-// Count 统计链接总数
-func (s *customShortUrlMapModel) Count(ctx context.Context, search string) (int64, error) {
+// Count 统计链接总数（按用户过滤）
+func (s *customShortUrlMapModel) Count(ctx context.Context, userID uint64, search string) (int64, error) {
+	userWhere := ""
+	var userArgs []interface{}
+	if userID > 0 {
+		userWhere = " AND `user_id` = ?"
+		userArgs = append(userArgs, userID)
+	}
+
 	var count int64
 	var err error
 
 	if search != "" {
-		query := fmt.Sprintf("select count(*) from %s where `is_del` = 0 and (`surl` like ? or `lurl` like ?)", s.table)
+		query := fmt.Sprintf("select count(*) from %s where `is_del` = 0"+userWhere+" and (`surl` like ? or `lurl` like ?)", s.table)
 		like := "%" + search + "%"
-		err = s.CachedConn.QueryRowNoCacheCtx(ctx, &count, query, like, like)
+		args := append(userArgs, like, like)
+		err = s.CachedConn.QueryRowNoCacheCtx(ctx, &count, query, args...)
 	} else {
-		query := fmt.Sprintf("select count(*) from %s where `is_del` = 0", s.table)
-		err = s.CachedConn.QueryRowNoCacheCtx(ctx, &count, query)
+		query := fmt.Sprintf("select count(*) from %s where `is_del` = 0"+userWhere, s.table)
+		err = s.CachedConn.QueryRowNoCacheCtx(ctx, &count, query, userArgs...)
 	}
 	if err != nil {
 		return 0, err
@@ -162,14 +181,21 @@ func (s *customShortUrlMapModel) IncrementClickCount(ctx context.Context, surl s
 	return err
 }
 
-// GetStats 获取仪表盘统计数据
-func (s *customShortUrlMapModel) GetStats(ctx context.Context) (map[string]int64, error) {
+// GetStats 获取仪表盘统计数据（按用户过滤）
+func (s *customShortUrlMapModel) GetStats(ctx context.Context, userID uint64) (map[string]int64, error) {
 	stats := make(map[string]int64)
+
+	userWhere := ""
+	var userArgs []interface{}
+	if userID > 0 {
+		userWhere = " AND `user_id` = ?"
+		userArgs = append(userArgs, userID)
+	}
 
 	// 总链接数
 	var totalLinks int64
 	if err := s.CachedConn.QueryRowNoCacheCtx(ctx, &totalLinks,
-		fmt.Sprintf("select count(*) from %s where `is_del` = 0", s.table)); err != nil {
+		fmt.Sprintf("select count(*) from %s where `is_del` = 0"+userWhere, s.table), userArgs...); err != nil {
 		return nil, err
 	}
 	stats["total_links"] = totalLinks
@@ -177,7 +203,7 @@ func (s *customShortUrlMapModel) GetStats(ctx context.Context) (map[string]int64
 	// 总点击数
 	var totalClicks int64
 	if err := s.CachedConn.QueryRowNoCacheCtx(ctx, &totalClicks,
-		fmt.Sprintf("select coalesce(sum(`click_count`), 0) from %s where `is_del` = 0", s.table)); err != nil {
+		fmt.Sprintf("select coalesce(sum(`click_count`), 0) from %s where `is_del` = 0"+userWhere, s.table), userArgs...); err != nil {
 		return nil, err
 	}
 	stats["total_clicks"] = totalClicks
@@ -185,7 +211,7 @@ func (s *customShortUrlMapModel) GetStats(ctx context.Context) (map[string]int64
 	// 今日新增链接
 	var todayLinks int64
 	if err := s.CachedConn.QueryRowNoCacheCtx(ctx, &todayLinks,
-		fmt.Sprintf("select count(*) from %s where `is_del` = 0 and date(`create_at`) = curdate()", s.table)); err != nil {
+		fmt.Sprintf("select count(*) from %s where `is_del` = 0 and date(`create_at`) = curdate()"+userWhere, s.table), userArgs...); err != nil {
 		return nil, err
 	}
 	stats["today_links"] = todayLinks
@@ -193,7 +219,7 @@ func (s *customShortUrlMapModel) GetStats(ctx context.Context) (map[string]int64
 	// 今日点击数
 	var todayClicks int64
 	if err := s.CachedConn.QueryRowNoCacheCtx(ctx, &todayClicks,
-		fmt.Sprintf("select coalesce(sum(`click_count`), 0) from %s where `is_del` = 0 and date(`create_at`) = curdate()", s.table)); err != nil {
+		fmt.Sprintf("select coalesce(sum(`click_count`), 0) from %s where `is_del` = 0 and date(`create_at`) = curdate()"+userWhere, s.table), userArgs...); err != nil {
 		return nil, err
 	}
 	stats["today_clicks"] = todayClicks
@@ -201,12 +227,22 @@ func (s *customShortUrlMapModel) GetStats(ctx context.Context) (map[string]int64
 	// 安全拦截（danger 级别）
 	var blocked int64
 	if err := s.CachedConn.QueryRowNoCacheCtx(ctx, &blocked,
-		fmt.Sprintf("select count(*) from %s where `risk_level` = 'danger'", s.table)); err != nil {
+		fmt.Sprintf("select count(*) from %s where `risk_level` = 'danger'"+userWhere, s.table), userArgs...); err != nil {
 		return nil, err
 	}
 	stats["blocked_count"] = blocked
 
 	return stats, nil
+}
+
+// CountUnregistered 统计未注册用户（user_id IS NULL）创建的链接数
+func (s *customShortUrlMapModel) CountUnregistered(ctx context.Context) (int64, error) {
+	var count int64
+	query := fmt.Sprintf("select count(*) from %s where `is_del` = 0 and `user_id` is null", s.table)
+	if err := s.CachedConn.QueryRowNoCacheCtx(ctx, &count, query); err != nil {
+		return 0, err
+	}
+	return count, nil
 }
 
 // NewShortUrlMapModel returns a model for the database table.

@@ -3,6 +3,7 @@ package handler
 import (
 	"net/http"
 
+	"shortener/internal/middleware"
 	"shortener/internal/svc"
 
 	"github.com/zeromicro/go-zero/core/logx"
@@ -11,7 +12,9 @@ import (
 
 func StatsHandler(ctx *svc.ServiceContext) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		stats, err := ctx.ShortUrlModel.GetStats(r.Context())
+		_, userID, _ := middleware.GetUserFromContext(r.Context())
+
+		stats, err := ctx.ShortUrlModel.GetStats(r.Context(), userID)
 		if err != nil {
 			logx.Errorw("failed to get stats", logx.LogField{Key: "err", Value: err.Error()})
 			httpx.Error(w, err)

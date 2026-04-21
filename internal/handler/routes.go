@@ -16,6 +16,7 @@ func RegisterHandlers(server *rest.Server, serverCtx *svc.ServiceContext) {
 
 	cors := middleware.CORSMiddleware(c.CORS.AllowOrigins)
 	jwtAuth := middleware.JWTCookieMiddleware(c.Auth.JWTSecret)
+	optionalJWT := middleware.OptionalJWTCookieMiddleware(c.Auth.JWTSecret)
 
 	// 注册健康检查端点
 	server.AddRoutes([]rest.Route{
@@ -48,7 +49,12 @@ func RegisterHandlers(server *rest.Server, serverCtx *svc.ServiceContext) {
 			{
 				Method:  http.MethodPost,
 				Path:    "/convert",
-				Handler: rateLimit(ConvertHandler(serverCtx)),
+				Handler: rateLimit(optionalJWT(ConvertHandler(serverCtx))),
+			},
+			{
+				Method:  http.MethodGet,
+				Path:    "/convert/remaining",
+				Handler: rateLimit(optionalJWT(RemainingHandler(serverCtx))),
 			},
 			{
 				Method:  http.MethodGet,
@@ -64,7 +70,12 @@ func RegisterHandlers(server *rest.Server, serverCtx *svc.ServiceContext) {
 			{
 				Method:  http.MethodPost,
 				Path:    "/auth/login",
-				Handler: cors(LoginHandler(c)),
+				Handler: cors(LoginHandler(c, serverCtx.UserModel)),
+			},
+			{
+				Method:  http.MethodPost,
+				Path:    "/auth/register",
+				Handler: cors(RegisterHandler(c, serverCtx.UserModel)),
 			},
 			{
 				Method:  http.MethodPost,
@@ -79,6 +90,16 @@ func RegisterHandlers(server *rest.Server, serverCtx *svc.ServiceContext) {
 			{
 				Method:  http.MethodOptions,
 				Path:    "/auth/logout",
+				Handler: cors(func(w http.ResponseWriter, r *http.Request) {}),
+			},
+			{
+				Method:  http.MethodOptions,
+				Path:    "/auth/register",
+				Handler: cors(func(w http.ResponseWriter, r *http.Request) {}),
+			},
+			{
+				Method:  http.MethodOptions,
+				Path:    "/convert/remaining",
 				Handler: cors(func(w http.ResponseWriter, r *http.Request) {}),
 			},
 			{

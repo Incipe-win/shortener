@@ -31,7 +31,15 @@ export async function previewLink(surl: string): Promise<PreviewResponse> {
 // ── Auth APIs ────────────────────────────────────
 
 export async function login(username: string, password: string) {
-  return request<{ message: string }>('/auth/login', {
+  return request<{ message: string; username: string; user_id: number }>('/auth/login', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ username, password }),
+  });
+}
+
+export async function register(username: string, password: string) {
+  return request<{ message: string; username: string; user_id: number }>('/auth/register', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ username, password }),
@@ -43,7 +51,17 @@ export async function logout() {
 }
 
 export async function getMe() {
-  return request<{ username: string }>('/auth/me');
+  return request<{ username: string; user_id: number }>('/auth/me');
+}
+
+export async function getUnregisteredRemaining(): Promise<{ remaining: number }> {
+  try {
+    const res = await fetch('/api/convert/remaining', { credentials: 'include' });
+    if (!res.ok) return { remaining: 0 };
+    return res.json();
+  } catch {
+    return { remaining: 0 };
+  }
 }
 
 // ── Protected APIs ───────────────────────────────

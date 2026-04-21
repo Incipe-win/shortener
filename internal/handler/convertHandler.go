@@ -4,6 +4,7 @@ import (
 	"net/http"
 
 	"shortener/internal/logic"
+	"shortener/internal/middleware"
 	"shortener/internal/svc"
 	"shortener/internal/types"
 
@@ -26,8 +27,11 @@ func ConvertHandler(svcCtx *svc.ServiceContext) http.HandlerFunc {
 			return
 		}
 
+		// 提取用户信息（可选认证）
+		username, userID, _ := middleware.GetUserFromContext(r.Context())
+
 		l := logic.NewConvertLogic(r.Context(), svcCtx)
-		resp, err := l.Convert(&req)
+		resp, err := l.Convert(&req, username, userID)
 		if err != nil {
 			httpx.ErrorCtx(r.Context(), w, err)
 		} else {

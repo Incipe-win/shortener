@@ -1,13 +1,15 @@
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ArrowRight, Copy, Check, Sparkles } from 'lucide-react';
+import { ArrowRight, Copy, Check, Sparkles, AlertCircle } from 'lucide-react';
+import { Link } from '@tanstack/react-router';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Card } from '@/components/ui/Card';
 import { convertUrl } from '@/lib/api';
+import { useAuth } from '@/stores/auth';
 
 const schema = z.object({
   long_url: z.string().url('请输入有效的 URL'),
@@ -19,6 +21,29 @@ export function ConvertForm() {
   const [result, setResult] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [remaining, setRemaining] = useState<number | null>(null);
+  const { isAuthenticated } = useAuth();
+
+  const fetchRemaining = useCallback(async () => {
+    if (isAuthenticated) {
+      setRemaining(-1); // unlimited
+      return;
+    }
+    try {
+      const res = await fetch('/api/convert/remaining', { credentials: 'include' });
+      if (res.ok) {
+        const data = await res.json();
+        setRemaining(data.remaining);
+      }
+    } catch {
+      // ignore
+    }
+  }, [isAuthenticated]);
+
+  useEffect(() => {
+    fetchRemaining();
+  }, [fetchRemaining]);
 
   const { register, handleSubmit, formState: { errors } } = useForm<FormData>({
     resolver: zodResolver(schema),
@@ -27,11 +52,15 @@ export function ConvertForm() {
   const onSubmit = async (data: FormData) => {
     setLoading(true);
     setResult(null);
+    setError(null);
     try {
       const res = await convertUrl(data.long_url);
       setResult(res.short_url);
-    } catch (err) {
-      console.error(err);
+      fetchRemaining(); // refresh count
+    } catch (err: unknown) {
+      if (err instanceof Error) {
+        setError(err.message);
+      }
     } finally {
       setLoading(false);
     }
@@ -46,6 +75,20 @@ export function ConvertForm() {
 
   return (
     <Card className="p-6 sm:p-8 max-w-2xl mx-auto">
+      {/* Limit Warning */}
+      {!isAuthenticated && remaining !== null && remaining <= 3 && (
+        <div className={`mb-4 p-3 rounded-lg flex items-center gap-2 text-sm ${remaining === 0 ? 'bg-red-500/10 text-red-400 border border-red-500/20' : 'bg-yellow-500/10 text-yellow-400 border border-yellow-500/20'}`}>
+          <AlertCircle className="w-4 h-4 shrink-0" />
+          <span>
+            {remaining === 0
+              ? '已达创建上限，请'
+              : `未注册用户最多创建 3 个短链接（已用 ${3 - remaining}/3），`}
+            <Link to="/login" className="underline hover:no-underline">登录/注册</Link>
+            {remaining === 0 ? '后继续使用' : '后可无限制创建'}
+          </span>
+        </div>
+      )}
+
       <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-4">
         <div className="flex flex-col sm:flex-row gap-3">
           <Input
@@ -61,6 +104,12 @@ export function ConvertForm() {
           </Button>
         </div>
       </form>
+
+      {error && (
+        <div className="mt-4 p-3 rounded-lg bg-red-500/10 border border-red-500/20 text-sm text-red-400">
+          {error}
+        </div>
+      )}
 
       <AnimatePresence>
         {result && (

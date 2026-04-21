@@ -25,9 +25,11 @@
 ## 功能
 
 - 短链接生成与跳转 (base62 编码)
+- 用户注册与 JWT Cookie 认证
+- 多用户数据隔离 — 每个用户仅可见自己的链接与统计数据
+- 未注册用户限制创建 3 个短链接，注册后无限制
 - 安全巡检与风险评级 (LLM AI 分析)
 - 链接预览 (摘要 + 关键词提取)
-- JWT Cookie 认证 + 链接列表分页查询
 - 基于 Redis 的 IP 限流
 - 点击事件异步统计
 - Prometheus 指标采集
@@ -52,7 +54,6 @@ MYSQL_ROOT_PASSWORD=your-secure-root-password
 MYSQL_PASSWORD=your-secure-db-password
 REDIS_PASSWORD=your-secure-redis-password
 JWT_SECRET=your-super-secret-jwt-key
-ADMIN_PASSWORD=your-secure-admin-password
 LLM_API_KEY=your-deepseek-api-key
 DOMAIN=incipe.top
 HTTPS_PORT=2053
@@ -81,10 +82,15 @@ make up
 # 健康检查
 curl -k https://localhost:2053/health
 
-# 创建短链接
+# 创建短链接（未注册用户，最多 3 次）
 curl -k https://localhost:2053/api/convert \
   -H 'Content-Type: application/json' \
   -d '{"long_url":"https://example.com"}'
+
+# 注册账号
+curl -k https://localhost:2053/api/auth/register \
+  -H 'Content-Type: application/json' \
+  -d '{"username":"myuser","password":"mypass123"}'
 
 # 短链接跳转
 curl -kI https://localhost:2053/abc123
@@ -166,7 +172,8 @@ pnpm build      # 生产构建
 
 | 方法 | 路径 | 说明 |
 |------|------|------|
-| POST | `/api/convert` | 创建短链接 |
+| POST | `/api/convert` | 创建短链接（未注册用户限 3 次） |
+| GET | `/api/convert/remaining` | 查询未注册用户剩余可创建次数 |
 | GET | `/api/preview/:short_url` | 链接预览 (AI 摘要 + 风险评级) |
 | GET | `/:short_url` | 短链接跳转 (302) |
 
@@ -174,10 +181,12 @@ pnpm build      # 生产构建
 
 | 方法 | 路径 | 说明 |
 |------|------|------|
-| POST | `/api/auth/login` | 管理员登录 |
+| POST | `/api/auth/register` | 用户注册 (注册后自动登录) |
+| POST | `/api/auth/login` | 用户登录 |
 | POST | `/api/auth/logout` | 登出 |
-| GET | `/api/auth/me` | 获取当前用户 |
-| GET | `/api/links?page=1&page_size=10` | 链接列表 (分页 + 搜索) |
+| GET | `/api/auth/me` | 获取当前用户信息 |
+| GET | `/api/links?page=1&page_size=10` | 链接列表 (分页 + 搜索，仅当前用户) |
+| GET | `/api/stats` | 仪表盘统计 (仅当前用户) |
 | GET | `/api/metrics` | Prometheus 指标 |
 
 ## 数据库
@@ -188,8 +197,20 @@ pnpm build      # 生产构建
 - `sequence.sql` -- 发号器表
 - `alter_short_url_map.sql` -- 表结构扩展
 - `alter_click_count.sql` -- 点击计数字段
+- `alter_user.sql` -- 用户表 + 用户 ID 字段
 
 数据持久化到 Docker volume `mysql_data`。
+
+## 用户与权限
+
+| 用户类型 | 短链接创建 | 数据可见性 |
+|----------|-----------|-----------|
+| 未注册 | 最多 3 个 | 仅创建时返回结果，无后台 |
+| 已注册 | 无限制 | 仅自己的链接和统计数据 |
+
+- 注册时自动登录，JWT Cookie 有效期默认 7 天
+- 用户名 3-32 位字母数字，密码至少 6 位
+- 密码使用 bcrypt 哈希存储
 
 ## 备份
 

@@ -1,11 +1,12 @@
 import { create } from 'zustand';
-import { login as apiLogin, logout as apiLogout, getMe } from '@/lib/api';
+import { login as apiLogin, register as apiRegister, logout as apiLogout, getMe } from '@/lib/api';
 
 interface AuthState {
   isAuthenticated: boolean;
-  user: { username: string } | null;
+  user: { username: string; user_id: number } | null;
   loading: boolean;
   login: (username: string, password: string) => Promise<void>;
+  register: (username: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
   checkAuth: () => Promise<void>;
 }
@@ -16,8 +17,13 @@ export const useAuth = create<AuthState>((set) => ({
   loading: true,
 
   login: async (username: string, password: string) => {
-    await apiLogin(username, password);
-    set({ isAuthenticated: true, user: { username } });
+    const res = await apiLogin(username, password);
+    set({ isAuthenticated: true, user: { username: res.username, user_id: res.user_id } });
+  },
+
+  register: async (username: string, password: string) => {
+    const res = await apiRegister(username, password);
+    set({ isAuthenticated: true, user: { username: res.username, user_id: res.user_id } });
   },
 
   logout: async () => {

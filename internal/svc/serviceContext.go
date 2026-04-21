@@ -14,6 +14,7 @@ import (
 type ServiceContext struct {
 	Config            config.Config
 	ShortUrlModel     model.ShortUrlMapModel
+	UserModel         model.UserModel
 	SequenceModel     model.SequenceModel
 	ShortUrlBlackList map[string]struct{}
 
@@ -45,6 +46,7 @@ func NewServiceContext(c config.Config) *ServiceContext {
 	})
 
 	shortUrlModel := model.NewShortUrlMapModel(shortUrlModelConn, c.CacheRedis)
+	userModel := model.NewUserModel(sqlx.NewMysql(c.ShortUrlDB.DSN))
 
 	// 初始化 bloom filter
 	filter := bloom.New(store, "bloom_filter", 20*(1<<20))
@@ -71,6 +73,7 @@ func NewServiceContext(c config.Config) *ServiceContext {
 	return &ServiceContext{
 		Config:            c,
 		ShortUrlModel:     shortUrlModel,
+		UserModel:         userModel,
 		SequenceModel:     model.NewSequenceModel(sequenceModelConn, c.CacheRedis),
 		ShortUrlBlackList: m,
 		Filter:            filter,

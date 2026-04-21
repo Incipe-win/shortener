@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"strconv"
 
+	"shortener/internal/middleware"
 	"shortener/internal/svc"
 
 	"github.com/zeromicro/go-zero/rest/httpx"
@@ -31,6 +32,8 @@ type linksResponse struct {
 // LinksHandler GET /api/links?page=1&page_size=10&search=xxx
 func LinksHandler(svcCtx *svc.ServiceContext) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
+		_, userID, _ := middleware.GetUserFromContext(r.Context())
+
 		page, _ := strconv.Atoi(r.URL.Query().Get("page"))
 		if page < 1 {
 			page = 1
@@ -41,15 +44,15 @@ func LinksHandler(svcCtx *svc.ServiceContext) http.HandlerFunc {
 		}
 		search := r.URL.Query().Get("search")
 
-		// 查询总数
-		total, err := svcCtx.ShortUrlModel.Count(r.Context(), search)
+		// 查询总数（按用户过滤）
+		total, err := svcCtx.ShortUrlModel.Count(r.Context(), userID, search)
 		if err != nil {
 			httpx.ErrorCtx(r.Context(), w, err)
 			return
 		}
 
-		// 查询列表
-		list, err := svcCtx.ShortUrlModel.FindList(r.Context(), page, pageSize, search)
+		// 查询列表（按用户过滤）
+		list, err := svcCtx.ShortUrlModel.FindList(r.Context(), userID, page, pageSize, search)
 		if err != nil {
 			httpx.ErrorCtx(r.Context(), w, err)
 			return
@@ -61,7 +64,7 @@ func LinksHandler(svcCtx *svc.ServiceContext) http.HandlerFunc {
 			item := linkItem{
 				ID:       m.Id,
 				CreateAt: m.CreateAt.Format("2006-01-02T15:04:05Z07:00"),
-					ClickCount: int64(m.ClickCount),
+				ClickCount: int64(m.ClickCount),
 			}
 			if m.Surl.Valid {
 				item.Surl = m.Surl.String

@@ -48,6 +48,7 @@ type (
 		Id         uint64         `db:"id"`          // 主键
 		CreateAt   time.Time      `db:"create_at"`   // 创建时间
 		CreateBy   string         `db:"create_by"`   // 创建者
+		UserID     sql.NullInt64  `db:"user_id"`     // 创建者用户ID
 		IsDel      uint64         `db:"is_del"`      // 是否删除：0正常1删除
 		Lurl       sql.NullString `db:"lurl"`        // 长链接
 		Md5        sql.NullString `db:"md5"`         // 长链接MD5
@@ -146,8 +147,8 @@ func (m *defaultShortUrlMapModel) Insert(ctx context.Context, data *ShortUrlMap)
 	sqlTestShortUrlMapMd5Key := fmt.Sprintf("%s%v", cacheSqlTestShortUrlMapMd5Prefix, data.Md5)
 	sqlTestShortUrlMapSurlKey := fmt.Sprintf("%s%v", cacheSqlTestShortUrlMapSurlPrefix, data.Surl)
 	ret, err := m.ExecCtx(ctx, func(ctx context.Context, conn sqlx.SqlConn) (result sql.Result, err error) {
-		query := fmt.Sprintf("insert into %s (%s) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", m.table, shortUrlMapRowsExpectAutoSet)
-		return conn.ExecCtx(ctx, query, data.CreateBy, data.IsDel, data.Lurl, data.Md5, data.Surl, data.AiSummary, data.AiKeywords, data.AiSlug, data.RiskLevel, data.RiskReason, data.ClickCount)
+		query := fmt.Sprintf("insert into %s (%s) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", m.table, shortUrlMapRowsExpectAutoSet)
+		return conn.ExecCtx(ctx, query, data.CreateBy, data.UserID, data.IsDel, data.Lurl, data.Md5, data.Surl, data.AiSummary, data.AiKeywords, data.AiSlug, data.RiskLevel, data.RiskReason, data.ClickCount)
 	}, sqlTestShortUrlMapIdKey, sqlTestShortUrlMapMd5Key, sqlTestShortUrlMapSurlKey)
 	return ret, err
 }
@@ -163,7 +164,7 @@ func (m *defaultShortUrlMapModel) Update(ctx context.Context, newData *ShortUrlM
 	sqlTestShortUrlMapSurlKey := fmt.Sprintf("%s%v", cacheSqlTestShortUrlMapSurlPrefix, data.Surl)
 	_, err = m.ExecCtx(ctx, func(ctx context.Context, conn sqlx.SqlConn) (result sql.Result, err error) {
 		query := fmt.Sprintf("update %s set %s where `id` = ?", m.table, shortUrlMapRowsWithPlaceHolder)
-		return conn.ExecCtx(ctx, query, newData.CreateBy, newData.IsDel, newData.Lurl, newData.Md5, newData.Surl, newData.AiSummary, newData.AiKeywords, newData.AiSlug, newData.RiskLevel, newData.RiskReason, newData.ClickCount, newData.Id)
+		return conn.ExecCtx(ctx, query, newData.CreateBy, newData.UserID, newData.IsDel, newData.Lurl, newData.Md5, newData.Surl, newData.AiSummary, newData.AiKeywords, newData.AiSlug, newData.RiskLevel, newData.RiskReason, newData.ClickCount, newData.Id)
 	}, sqlTestShortUrlMapIdKey, sqlTestShortUrlMapMd5Key, sqlTestShortUrlMapSurlKey)
 	return err
 }

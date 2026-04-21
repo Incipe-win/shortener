@@ -41,7 +41,7 @@ func NewConvertLogic(ctx context.Context, svcCtx *svc.ServiceContext) *ConvertLo
 }
 
 // Convert 转链：输一个长链接 --> 转为短链接
-func (l *ConvertLogic) Convert(req *types.ConvertRequest) (resp *types.ConvertResponse, err error) {
+func (l *ConvertLogic) Convert(req *types.ConvertRequest, username string, userID uint64) (resp *types.ConvertResponse, err error) {
 	// 创建 tracing span
 	ctx, span := otel.Tracer().Start(l.ctx, "ConvertLogic.Convert")
 	defer span.End()
@@ -79,6 +79,28 @@ func (l *ConvertLogic) Convert(req *types.ConvertRequest) (resp *types.ConvertRe
 		if safetyResult.RiskLevel == "warning" {
 			l.sendSafetyAlert(req.LongUrl, "", safetyResult.RiskLevel, safetyResult.Reason)
 		}
+	}
+
+	// 未注册用户限制：最多 3 个短链接
+	if userID == 0 {
+		count, err := l.svcCtx.ShortUrlModel.Count(ctx, 0, "")
+		if err != nil {
+			logx.Errorw("failed to count unregistered links", logx.LogField{Key: "err", Value: err.Error()})
+			metrics.ConvertTotal.WithLabelValues("error").Inc()
+			return nil, errors.New("internal error")
+		}
+		// 统计 user_id IS NULL 的链接数
+		unregCount, err := l.svcCtx.ShortUrlModel.CountUnregistered(ctx)
+		if err != nil {
+			logx.Errorw("failed to count unregistered links", logx.LogField{Key: "err", Value: err.Error()})
+			metrics.ConvertTotal.WithLabelValues("error").Inc()
+			return nil, errors.New("internal error")
+		}
+		if unregCount >= 3 {
+			metrics.ConvertTotal.WithLabelValues("limited").Inc()
+			return nil, errors.New("未注册用户最多创建 3 个短链接，请注册后继续使用")
+		}
+		_ = count // unused, kept for future use
 	}
 
 	// 1.3 判断之前是否已经转链过（数据库中是否已经存在该长链接）
@@ -140,10 +162,21 @@ func (l *ConvertLogic) Convert(req *types.ConvertRequest) (resp *types.ConvertRe
 	}
 	// 4. 存储长链接短链接映射关系
 	logx.Debugf("short URL generated: %s", shortUrl)
+
+	// 构建用户信息
+	var creator string
+	var uID sql.NullInt64
+	if userID > 0 {
+		creator = username
+		uID = sql.NullInt64{Int64: int64(userID), Valid: true}
+	}
+
 	if _, err := l.svcCtx.ShortUrlModel.Insert(ctx, &model.ShortUrlMap{
-		Lurl: sql.NullString{String: req.LongUrl, Valid: true},
-		Md5:  sql.NullString{String: md5Hash, Valid: true},
-		Surl: sql.NullString{String: shortUrl, Valid: true},
+		CreateBy: creator,
+		UserID:   uID,
+		Lurl:     sql.NullString{String: req.LongUrl, Valid: true},
+		Md5:      sql.NullString{String: md5Hash, Valid: true},
+		Surl:     sql.NullString{String: shortUrl, Valid: true},
 	}); err != nil {
 		logx.Errorw("failed to insert short URL map", logx.LogField{Key: "error", Value: err.Error()})
 	}
