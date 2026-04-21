@@ -65,3 +65,6 @@ go.work
 # Config files may contain secrets (API keys etc.)
 etc/*.yaml
 !etc/*.yaml.example
+# Frontend
+web/node_modules/
+web/dist/
