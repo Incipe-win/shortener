@@ -21,7 +21,7 @@ type Config struct {
 	BaseString string // bas62指定基础字符串
 
 	ShortUrlBlackList []string
-	ShortDoamin       string
+	ShortDomain       string
 
 	// LLM 大模型配置
 	LLM struct {
@@ -58,7 +58,7 @@ type Config struct {
 	// Auth 认证配置
 	Auth struct {
 		JWTSecret string `json:",default=shortener-jwt-secret-2026"`
-		Expiry    int    `json:",default=86400"` // Token 过期时间（秒），默认 24h
+		Expiry    int    `json:",default=604800"` // Token 过期时间（秒），默认 7 天
 		Admin     struct {
 			Username string `json:",default=admin"`
 			Password string `json:",default=admin123"`

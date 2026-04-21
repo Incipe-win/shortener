@@ -91,6 +91,11 @@ func RegisterHandlers(server *rest.Server, serverCtx *svc.ServiceContext) {
 				Path:    "/links",
 				Handler: cors(func(w http.ResponseWriter, r *http.Request) {}),
 			},
+			{
+				Method:  http.MethodOptions,
+				Path:    "/stats",
+				Handler: cors(func(w http.ResponseWriter, r *http.Request) {}),
+			},
 		},
 	)
 
@@ -106,6 +111,11 @@ func RegisterHandlers(server *rest.Server, serverCtx *svc.ServiceContext) {
 				Method:  http.MethodGet,
 				Path:    "/links",
 				Handler: cors(jwtAuth(LinksHandler(serverCtx))),
+			},
+			{
+				Method:  http.MethodGet,
+				Path:    "/stats",
+				Handler: cors(jwtAuth(StatsHandler(serverCtx))),
 			},
 		},
 	)

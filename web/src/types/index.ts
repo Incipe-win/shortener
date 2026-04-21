@@ -14,6 +14,7 @@ export interface PreviewResponse {
   summary: string;
   keywords: string[];
   risk_level: string;
+  risk_reason?: string;
 }
 
 export interface LinkItem {

@@ -14,7 +14,7 @@ import (
 const (
 	maxContentLength = 2000 // 控制传给 LLM 的文本长度
 	requestTimeout   = 10 * time.Second
-	userAgent        = "SmartShortenerBot/1.0"
+	userAgent        = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36"
 )
 
 // httpClient 全局 HTTP 客户端

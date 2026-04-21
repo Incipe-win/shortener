@@ -51,6 +51,7 @@ func (l *PreviewLogic) Preview(req *types.PreviewRequest) (resp *types.PreviewRe
 		Summary:   u.AiSummary.String,
 		Keywords:  keywords,
 		RiskLevel: u.RiskLevel.String,
+		RiskReason: u.RiskReason.String,
 	}, nil
 }
 

@@ -44,7 +44,7 @@ Kafka:
 # 认证配置
 Auth:
   JWTSecret: "${JWT_SECRET}"
-  Expiry: 86400
+  Expiry: 604800
   Admin:
     Username: "${ADMIN_USERNAME}"
     Password: "${ADMIN_PASSWORD}"

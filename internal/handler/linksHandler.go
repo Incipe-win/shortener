@@ -61,6 +61,7 @@ func LinksHandler(svcCtx *svc.ServiceContext) http.HandlerFunc {
 			item := linkItem{
 				ID:       m.Id,
 				CreateAt: m.CreateAt.Format("2006-01-02T15:04:05Z07:00"),
+					ClickCount: int64(m.ClickCount),
 			}
 			if m.Surl.Valid {
 				item.Surl = m.Surl.String

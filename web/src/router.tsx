@@ -6,6 +6,7 @@ import { PreviewPage } from '@/pages/Preview';
 import { LoginPage } from '@/pages/Login';
 import { DashboardPage } from '@/pages/Dashboard';
 import { MonitorPage } from '@/pages/Monitor';
+import { NotFoundPage } from '@/pages/NotFound';
 import { useAuth } from '@/stores/auth';
 
 // Root layout
@@ -37,6 +38,12 @@ const previewRoute = createRoute({
 const loginRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/login',
+  beforeLoad: async () => {
+    await useAuth.getState().checkAuth();
+    if (useAuth.getState().isAuthenticated) {
+      throw redirect({ to: '/dashboard' });
+    }
+  },
   component: LoginPage,
 });
 
@@ -45,9 +52,9 @@ const loginRoute = createRoute({
 const dashboardRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/dashboard',
-  beforeLoad: () => {
-    const { isAuthenticated } = useAuth.getState();
-    if (!isAuthenticated) {
+  beforeLoad: async () => {
+    await useAuth.getState().checkAuth();
+    if (!useAuth.getState().isAuthenticated) {
       throw redirect({ to: '/login' });
     }
   },
@@ -57,13 +64,19 @@ const dashboardRoute = createRoute({
 const monitorRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/monitor',
-  beforeLoad: () => {
-    const { isAuthenticated } = useAuth.getState();
-    if (!isAuthenticated) {
+  beforeLoad: async () => {
+    await useAuth.getState().checkAuth();
+    if (!useAuth.getState().isAuthenticated) {
       throw redirect({ to: '/login' });
     }
   },
   component: MonitorPage,
+});
+
+const notFoundRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/404/$surl',
+  component: NotFoundPage,
 });
 
 // ── Router ───────────────────────────────
@@ -75,6 +88,7 @@ export const router = createRouter({
     loginRoute,
     dashboardRoute,
     monitorRoute,
+    notFoundRoute,
   ]),
   defaultPreload: 'intent',
 });

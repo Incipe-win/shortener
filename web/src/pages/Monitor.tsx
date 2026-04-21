@@ -16,9 +16,13 @@ interface MetricPoint {
 }
 
 function parsePrometheusValue(text: string, metricName: string): number {
-  const regex = new RegExp(`^${metricName}(?:\\{[^}]*\\})?\\s+(\\d+\\.?\\d*)`, 'm');
-  const match = text.match(regex);
-  return match ? parseFloat(match[1]) : 0;
+  const regex = new RegExp(`^${metricName}(?:\\{[^}]*\\})?\\s+(\\d+\\.?\\d*)`, 'gm');
+  let total = 0;
+  let match;
+  while ((match = regex.exec(text)) !== null) {
+    total += parseFloat(match[1]);
+  }
+  return total;
 }
 
 function MetricCard({ icon: Icon, label, value, subtitle }: {

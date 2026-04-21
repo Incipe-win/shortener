@@ -41,6 +41,7 @@ func AIAnalysisHandler(llmClient *llm.Client, shortUrlModel model.ShortUrlMapMod
 			logx.Errorw("[AI Consumer] failed to fetch page content",
 				logx.LogField{Key: "surl", Value: msg.Surl},
 				logx.LogField{Key: "err", Value: err.Error()})
+			metrics.KafkaConsumeTotal.WithLabelValues(mq.TopicAIAnalysis, "error").Inc()
 			return err
 		}
 
@@ -50,6 +51,7 @@ func AIAnalysisHandler(llmClient *llm.Client, shortUrlModel model.ShortUrlMapMod
 			logx.Errorw("[AI Consumer] LLM summarize failed",
 				logx.LogField{Key: "surl", Value: msg.Surl},
 				logx.LogField{Key: "err", Value: err.Error()})
+			metrics.KafkaConsumeTotal.WithLabelValues(mq.TopicAIAnalysis, "error").Inc()
 			return err
 		}
 

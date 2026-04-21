@@ -3,7 +3,6 @@ package logic
 import (
 	"context"
 	"database/sql"
-	"errors"
 	"time"
 
 	"shortener/internal/ctxdata"
@@ -46,7 +45,7 @@ func (l *ShowLogic) Show(req *types.ShowRequest) (resp *types.ShowResponse, err 
 	if !exist {
 		metrics.BloomFilterHits.WithLabelValues("miss").Inc()
 		metrics.ShowTotal.WithLabelValues("not_found").Inc()
-		return nil, errors.New("404")
+		return &types.ShowResponse{LongUrl: "/404/" + req.ShortUrl}, nil
 	}
 	metrics.BloomFilterHits.WithLabelValues("hit").Inc()
 
@@ -54,7 +53,7 @@ func (l *ShowLogic) Show(req *types.ShowRequest) (resp *types.ShowResponse, err 
 	if err != nil {
 		if err == sql.ErrNoRows {
 			metrics.ShowTotal.WithLabelValues("not_found").Inc()
-			return nil, errors.New("short URL not found")
+			return &types.ShowResponse{LongUrl: "/404/" + req.ShortUrl}, nil
 		}
 		logx.Errorw("ShortUrlModel.FindOneBySurl failed", logx.LogField{Value: err.Error(), Key: "err"})
 		metrics.ShowTotal.WithLabelValues("error").Inc()
@@ -69,7 +68,7 @@ func (l *ShowLogic) Show(req *types.ShowRequest) (resp *types.ShowResponse, err 
 		logx.Infow("redirect blocked due to danger risk level",
 			logx.LogField{Key: "surl", Value: req.ShortUrl},
 			logx.LogField{Key: "risk_reason", Value: u.RiskReason.String})
-		return nil, errors.New("this link has been flagged as potentially unsafe and cannot be accessed")
+		return &types.ShowResponse{LongUrl: "/preview/" + req.ShortUrl}, nil
 	}
 
 	metrics.ShowTotal.WithLabelValues("success").Inc()

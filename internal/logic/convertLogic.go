@@ -55,7 +55,7 @@ func (l *ConvertLogic) Convert(req *types.ConvertRequest) (resp *types.ConvertRe
 	}
 
 	// 1.2.5 【新增】域名层面防循环检测
-	if urltool.IsCircularURL(req.LongUrl, l.svcCtx.Config.ShortDoamin) {
+	if urltool.IsCircularURL(req.LongUrl, l.svcCtx.Config.ShortDomain) {
 		metrics.ConvertTotal.WithLabelValues("error").Inc()
 		return nil, errors.New("cannot convert a URL from this service (circular reference)")
 	}
@@ -89,7 +89,7 @@ func (l *ConvertLogic) Convert(req *types.ConvertRequest) (resp *types.ConvertRe
 	if err == nil {
 		metrics.ConvertTotal.WithLabelValues("success").Inc()
 		return &types.ConvertResponse{
-			ShortUrl: l.svcCtx.Config.ShortDoamin + "/" + u.Surl.String,
+			ShortUrl: l.svcCtx.Config.ShortDomain + "/" + u.Surl.String,
 		}, nil
 	}
 	if err != sqlx.ErrNotFound {
@@ -173,7 +173,7 @@ func (l *ConvertLogic) Convert(req *types.ConvertRequest) (resp *types.ConvertRe
 	// 5. 返回响应
 	// 5.1 返回的是 短域名+短链接  q1mi.cn/1En
 	metrics.ConvertTotal.WithLabelValues("success").Inc()
-	shortUrl = l.svcCtx.Config.ShortDoamin + "/" + shortUrl
+	shortUrl = l.svcCtx.Config.ShortDomain + "/" + shortUrl
 	return &types.ConvertResponse{
 		ShortUrl: shortUrl,
 	}, nil

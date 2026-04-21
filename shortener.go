@@ -82,7 +82,7 @@ func main() {
 			brokers,
 			c.Kafka.Topics.ClickEvent,
 			"shortener-click-events",
-			consumer.ClickEventHandler(),
+			consumer.ClickEventHandler(ctx.ShortUrlModel),
 		)
 		group.Add(clickConsumer)
 		logx.Info("Kafka click event consumer registered")

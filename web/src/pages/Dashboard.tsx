@@ -20,6 +20,12 @@ async function fetchLinks(page: number, search: string): Promise<LinksResponse> 
   return res.json();
 }
 
+async function fetchStats(): Promise<{ total_links: number; total_clicks: number; today_links: number; today_clicks: number; blocked_count: number }> {
+  const res = await fetch('/api/stats', { credentials: 'include' });
+  if (!res.ok) throw new Error('Failed to fetch stats');
+  return res.json();
+}
+
 function StatsCard({ icon: Icon, label, value, trend }: {
   icon: typeof Link2; label: string; value: string; trend?: string;
 }) {
@@ -91,6 +97,13 @@ export function DashboardPage() {
     retry: false,
   });
 
+  const { data: stats } = useQuery({
+    queryKey: ['stats'],
+    queryFn: fetchStats,
+    retry: false,
+    refetchInterval: 30000,
+  });
+
   return (
     <div className="pt-24 pb-16">
       <Container>
@@ -108,10 +121,10 @@ export function DashboardPage() {
 
           {/* Stats Grid */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-            <StatsCard icon={Link2} label="总链接数" value={data ? String(data.total) : '—'} trend="+12%" />
-            <StatsCard icon={MousePointerClick} label="今日点击" value="—" trend="+8%" />
-            <StatsCard icon={ShieldAlert} label="安全拦截" value="—" />
-            <StatsCard icon={TrendingUp} label="转化率" value="—" />
+            <StatsCard icon={Link2} label="总链接数" value={stats ? String(stats.total_links) : '—'} />
+            <StatsCard icon={MousePointerClick} label="今日点击" value={stats ? String(stats.today_clicks) : '—'} />
+            <StatsCard icon={ShieldAlert} label="安全拦截" value={stats ? String(stats.blocked_count) : '—'} />
+            <StatsCard icon={TrendingUp} label="总点击" value={stats ? String(stats.total_clicks) : '—'} />
           </div>
 
           {/* Links Table */}

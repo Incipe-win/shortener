@@ -26,9 +26,10 @@ type PreviewRequest struct {
 }
 
 type PreviewResponse struct {
-	ShortUrl  string   `json:"short_url"`
-	LongUrl   string   `json:"long_url"`
-	Summary   string   `json:"summary"`
-	Keywords  []string `json:"keywords"`
-	RiskLevel string   `json:"risk_level"`
+	ShortUrl    string   `json:"short_url"`
+	LongUrl     string   `json:"long_url"`
+	Summary     string   `json:"summary"`
+	Keywords    []string `json:"keywords"`
+	RiskLevel   string   `json:"risk_level"`
+	RiskReason  string   `json:"risk_reason"`
 }

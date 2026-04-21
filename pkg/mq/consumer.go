@@ -57,7 +57,13 @@ func (c *KafkaConsumer) Start() {
 				logx.LogField{Key: "partition", Value: msg.Partition},
 				logx.LogField{Key: "offset", Value: msg.Offset},
 				logx.LogField{Key: "err", Value: err.Error()})
-			// 处理失败不提交 offset，下次重试
+			// 提交 offset，避免单条永久失败消息阻塞整个队列
+			// 业务层应自行处理失败场景（降级、标记 pending 等）
+			if commitErr := c.reader.CommitMessages(ctx, msg); commitErr != nil {
+				logx.Errorw("[Kafka Consumer] failed to commit offset after handler error",
+					logx.LogField{Key: "topic", Value: c.topic},
+					logx.LogField{Key: "err", Value: commitErr.Error()})
+			}
 			continue
 		}
 

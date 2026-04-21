@@ -1,7 +1,7 @@
 import { useParams } from '@tanstack/react-router';
 import { useQuery } from '@tanstack/react-query';
 import { motion } from 'framer-motion';
-import { ExternalLink, Shield, Brain, Tag, Loader2 } from 'lucide-react';
+import { ExternalLink, Shield, ShieldAlert, Brain, Tag, Loader2, Ban } from 'lucide-react';
 import { Container } from '@/components/layout/Container';
 import { Card } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
@@ -47,6 +47,49 @@ export function PreviewPage() {
 
           {data && (
             <div className="space-y-6">
+              {/* Danger Block */}
+              {data.risk_level === 'danger' && (
+                <Card className="p-6 border-l-4 border-l-[var(--color-danger)] bg-[var(--color-danger)]/5">
+                  <div className="flex items-start gap-4">
+                    <div className="w-10 h-10 rounded-xl bg-[var(--color-danger)]/20 flex items-center justify-center flex-shrink-0">
+                      <ShieldAlert className="w-5 h-5 text-[var(--color-danger)]" />
+                    </div>
+                    <div className="flex-1">
+                      <h2 className="text-lg font-semibold text-[var(--color-danger)] mb-2">安全拦截</h2>
+                      <p className="text-sm text-[var(--color-fg)] mb-3">
+                        此链接存在安全风险，已被拦截，无法访问。
+                      </p>
+                      {data.risk_reason && (
+                        <div className="bg-[var(--color-surface)] rounded-lg p-3 border border-[var(--color-border)]">
+                          <p className="text-xs text-[var(--color-fg-muted)] mb-1">拦截原因</p>
+                          <p className="text-sm text-[var(--color-fg)]">{data.risk_reason}</p>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </Card>
+              )}
+
+              {/* Warning Card */}
+              {data.risk_level === 'warning' && (
+                <Card className="p-6 border-l-4 border-l-amber-500 bg-amber-500/5">
+                  <div className="flex items-start gap-4">
+                    <div className="w-10 h-10 rounded-xl bg-amber-500/20 flex items-center justify-center flex-shrink-0">
+                      <Ban className="w-5 h-5 text-amber-500" />
+                    </div>
+                    <div className="flex-1">
+                      <h2 className="text-lg font-semibold text-amber-500 mb-2">安全警告</h2>
+                      <p className="text-sm text-[var(--color-fg)] mb-2">
+                        此链接可能存在潜在风险，请谨慎访问。
+                      </p>
+                      {data.risk_reason && (
+                        <p className="text-xs text-[var(--color-fg-muted)]">{data.risk_reason}</p>
+                      )}
+                    </div>
+                  </div>
+                </Card>
+              )}
+
               {/* Risk Level */}
               <Card className="p-6">
                 <div className="flex items-center gap-3 mb-4">
@@ -94,17 +137,19 @@ export function PreviewPage() {
               )}
 
               {/* Original URL */}
-              <Card className="p-6">
-                <p className="text-xs font-mono tracking-widest text-[var(--color-fg-muted)] mb-2 uppercase">原始链接</p>
-                <p className="text-sm text-[var(--color-fg)] break-all mb-4">{data.long_url}</p>
-                <Button
-                  variant="secondary"
-                  onClick={() => window.open(data.long_url, '_blank')}
-                >
-                  <ExternalLink className="w-4 h-4" />
-                  访问原始链接
-                </Button>
-              </Card>
+              {data.risk_level !== 'danger' && (
+                <Card className="p-6">
+                  <p className="text-xs font-mono tracking-widest text-[var(--color-fg-muted)] mb-2 uppercase">原始链接</p>
+                  <p className="text-sm text-[var(--color-fg)] break-all mb-4">{data.long_url}</p>
+                  <Button
+                    variant="secondary"
+                    onClick={() => window.open(data.long_url, '_blank')}
+                  >
+                    <ExternalLink className="w-4 h-4" />
+                    访问原始链接
+                  </Button>
+                </Card>
+              )}
             </div>
           )}
         </motion.div>
