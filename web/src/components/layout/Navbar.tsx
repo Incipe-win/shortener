@@ -1,16 +1,30 @@
 import { useState } from 'react';
-import { Link } from '@tanstack/react-router';
-import { Menu, X, Link2 } from 'lucide-react';
+import { Link, useNavigate } from '@tanstack/react-router';
+import { Menu, X, Link2, LogOut } from 'lucide-react';
 import { Container } from './Container';
+import { Button } from '@/components/ui/Button';
+import { useAuth } from '@/stores/auth';
 
-const navLinks = [
-  { to: '/', label: '首页' },
-  { to: '/dashboard', label: '仪表盘' },
-  { to: '/monitor', label: '监控' },
+const publicLinks = [
+  { to: '/' as const, label: '首页' },
+] as const;
+
+const authLinks = [
+  { to: '/dashboard' as const, label: '仪表盘' },
+  { to: '/monitor' as const, label: '监控' },
 ] as const;
 
 export function Navbar() {
   const [open, setOpen] = useState(false);
+  const { isAuthenticated, user, logout } = useAuth();
+  const navigate = useNavigate();
+
+  const allLinks = isAuthenticated ? [...publicLinks, ...authLinks] : publicLinks;
+
+  const handleLogout = async () => {
+    await logout();
+    navigate({ to: '/' });
+  };
 
   return (
     <nav className="fixed top-0 inset-x-0 z-50 border-b border-[var(--color-border)] bg-[var(--color-bg-base)]/80 backdrop-blur-xl">
@@ -25,7 +39,7 @@ export function Navbar() {
 
         {/* Desktop links */}
         <div className="hidden md:flex items-center gap-1">
-          {navLinks.map(({ to, label }) => (
+          {allLinks.map(({ to, label }) => (
             <Link
               key={to}
               to={to}
@@ -35,6 +49,26 @@ export function Navbar() {
               {label}
             </Link>
           ))}
+
+          {/* Auth area */}
+          <div className="ml-3 pl-3 border-l border-[var(--color-border)] flex items-center gap-2">
+            {isAuthenticated ? (
+              <>
+                <span className="text-xs text-[var(--color-fg-muted)]">{user?.username}</span>
+                <button
+                  onClick={handleLogout}
+                  className="p-2 rounded-lg text-[var(--color-fg-muted)] hover:text-[var(--color-fg)] hover:bg-[var(--color-surface-hover)] transition-colors"
+                  title="登出"
+                >
+                  <LogOut className="w-4 h-4" />
+                </button>
+              </>
+            ) : (
+              <Link to="/login">
+                <Button variant="secondary" className="text-xs px-3 py-1.5">登录</Button>
+              </Link>
+            )}
+          </div>
         </div>
 
         {/* Mobile toggle */}
@@ -51,7 +85,7 @@ export function Navbar() {
       {open && (
         <div className="md:hidden bg-[var(--color-bg-base)]/95 backdrop-blur-xl border-b border-[var(--color-border)]">
           <Container className="py-4 flex flex-col gap-1">
-            {navLinks.map(({ to, label }) => (
+            {allLinks.map(({ to, label }) => (
               <Link
                 key={to}
                 to={to}
@@ -61,6 +95,20 @@ export function Navbar() {
                 {label}
               </Link>
             ))}
+            <div className="mt-2 pt-2 border-t border-[var(--color-border)]">
+              {isAuthenticated ? (
+                <button
+                  onClick={() => { handleLogout(); setOpen(false); }}
+                  className="w-full px-4 py-3 rounded-lg text-sm text-left text-[var(--color-fg-muted)] hover:text-[var(--color-fg)] hover:bg-[var(--color-surface-hover)] transition-colors"
+                >
+                  登出 ({user?.username})
+                </button>
+              ) : (
+                <Link to="/login" onClick={() => setOpen(false)}>
+                  <Button className="w-full">登录</Button>
+                </Link>
+              )}
+            </div>
           </Container>
         </div>
       )}

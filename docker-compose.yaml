@@ -62,7 +62,8 @@ services:
       COLLECTOR_OTLP_ENABLED: "true"
     ports:
       - "16686:16686"   # Jaeger UI
-      - "4317:4317"     # OTLP gRPC（应用上报用）
+      - "4317:4317"     # OTLP gRPC（Go 后端用）
+      - "4318:4318"     # OTLP HTTP（React 前端用）
 
 volumes:
   mysql_data:
