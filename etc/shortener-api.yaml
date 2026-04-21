@@ -40,3 +40,15 @@ Kafka:
     ClickEvent: "click-events"
     SafetyAlert: "safety-alerts"
 
+# 认证配置
+Auth:
+  JWTSecret: "shortener-jwt-secret-2026"
+  Expiry: 86400
+  Admin:
+    Username: "admin"
+    Password: "${ADMIN_PASSWORD:admin123}"
+
+# CORS 跨域配置
+CORS:
+  AllowOrigins:
+    - "http://localhost:3000"

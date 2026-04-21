@@ -19,6 +19,8 @@ type (
 		shortUrlMapModel
 		FindAll() ([]string, error)
 		UpdateAIFields(ctx context.Context, surl string, summary string, keywords []string, slug string, riskLevel string, riskReason string) error
+		FindList(ctx context.Context, page, pageSize int, search string) ([]*ShortUrlMap, error)
+		Count(ctx context.Context, search string) (int64, error)
 	}
 
 	customShortUrlMapModel struct {
@@ -64,6 +66,45 @@ func (s *customShortUrlMapModel) UpdateAIFields(ctx context.Context, surl string
 	}, sqlTestShortUrlMapSurlKey)
 
 	return err
+}
+
+// FindList 分页查询链接列表
+func (s *customShortUrlMapModel) FindList(ctx context.Context, page, pageSize int, search string) ([]*ShortUrlMap, error) {
+	offset := (page - 1) * pageSize
+	var resp []*ShortUrlMap
+	var err error
+
+	if search != "" {
+		query := fmt.Sprintf("select %s from %s where `is_del` = 0 and (`surl` like ? or `lurl` like ?) order by `id` desc limit ?, ?", shortUrlMapRows, s.table)
+		like := "%" + search + "%"
+		err = s.CachedConn.QueryRowsNoCacheCtx(ctx, &resp, query, like, like, offset, pageSize)
+	} else {
+		query := fmt.Sprintf("select %s from %s where `is_del` = 0 order by `id` desc limit ?, ?", shortUrlMapRows, s.table)
+		err = s.CachedConn.QueryRowsNoCacheCtx(ctx, &resp, query, offset, pageSize)
+	}
+	if err != nil {
+		return nil, err
+	}
+	return resp, nil
+}
+
+// Count 统计链接总数
+func (s *customShortUrlMapModel) Count(ctx context.Context, search string) (int64, error) {
+	var count int64
+	var err error
+
+	if search != "" {
+		query := fmt.Sprintf("select count(*) from %s where `is_del` = 0 and (`surl` like ? or `lurl` like ?)", s.table)
+		like := "%" + search + "%"
+		err = s.CachedConn.QueryRowNoCacheCtx(ctx, &count, query, like, like)
+	} else {
+		query := fmt.Sprintf("select count(*) from %s where `is_del` = 0", s.table)
+		err = s.CachedConn.QueryRowNoCacheCtx(ctx, &count, query)
+	}
+	if err != nil {
+		return 0, err
+	}
+	return count, nil
 }
 
 // NewShortUrlMapModel returns a model for the database table.

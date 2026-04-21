@@ -54,4 +54,19 @@ type Config struct {
 			SafetyAlert string `json:",default=safety-alerts"`
 		}
 	}
+
+	// Auth 认证配置
+	Auth struct {
+		JWTSecret string `json:",default=shortener-jwt-secret-2026"`
+		Expiry    int    `json:",default=86400"` // Token 过期时间（秒），默认 24h
+		Admin     struct {
+			Username string `json:",default=admin"`
+			Password string `json:",default=admin123"`
+		}
+	}
+
+	// CORS 跨域配置
+	CORS struct {
+		AllowOrigins []string `json:",default=[http://localhost:3000]"`
+	}
 }
