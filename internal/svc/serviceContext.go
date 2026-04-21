@@ -41,6 +41,7 @@ func NewServiceContext(c config.Config) *ServiceContext {
 
 	store := redis.New(c.CacheRedis[0].Host, func(r *redis.Redis) {
 		r.Type = redis.NodeType
+		r.Pass = c.CacheRedis[0].Pass
 	})
 
 	shortUrlModel := model.NewShortUrlMapModel(shortUrlModelConn, c.CacheRedis)

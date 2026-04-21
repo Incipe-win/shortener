@@ -68,3 +68,12 @@ etc/*.yaml
 # Frontend
 web/node_modules/
 web/dist/
+# Environment
+.env
+backups/
+# TLS Certificates
+nginx/ssl/*.pem
+nginx/ssl/*.key
+nginx/ssl/*.crt
+# Binaries
+bin/

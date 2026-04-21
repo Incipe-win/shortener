@@ -45,7 +45,7 @@ func LoginHandler(c config.Config) http.HandlerFunc {
 			Path:     "/",
 			MaxAge:   c.Auth.Expiry,
 			HttpOnly: true,
-			Secure:   false, // 开发环境用 false，生产环境改 true
+			Secure:   true, // 生产环境 HTTPS 必须为 true
 			SameSite: http.SameSiteLaxMode,
 		})
 
@@ -63,6 +63,8 @@ func LogoutHandler() http.HandlerFunc {
 			MaxAge:   -1,
 			Expires:  time.Unix(0, 0),
 			HttpOnly: true,
+			Secure:   true,
+			SameSite: http.SameSiteLaxMode,
 		})
 		httpx.OkJsonCtx(r.Context(), w, map[string]string{"message": "已登出"})
 	}
