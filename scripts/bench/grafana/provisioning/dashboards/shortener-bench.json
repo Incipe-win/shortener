@@ -1,0 +1,186 @@
+{
+  "annotations": { "list": [] },
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 0,
+  "links": [],
+  "panels": [
+    {
+      "type": "row",
+      "title": "QPS & 请求量",
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 0 },
+      "id": 1,
+      "collapsed": false
+    },
+    {
+      "id": 2,
+      "title": "QPS (按接口)",
+      "type": "timeseries",
+      "datasource": "Prometheus",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 1 },
+      "fieldConfig": {
+        "defaults": { "custom": { "drawStyle": "line", "lineWidth": 2 }, "unit": "reqps" }
+      },
+      "targets": [
+        {
+          "expr": "rate(shortener_convert_total[1m])",
+          "legendFormat": "POST /convert ({{status}})"
+        },
+        {
+          "expr": "rate(shortener_show_total[1m])",
+          "legendFormat": "GET /:short_url ({{status}})"
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "title": "当前 QPS 总计",
+      "type": "stat",
+      "datasource": "Prometheus",
+      "gridPos": { "h": 4, "w": 6, "x": 12, "y": 1 },
+      "fieldConfig": { "defaults": { "unit": "reqps" } },
+      "targets": [
+        { "expr": "sum(rate(shortener_convert_total[1m]))", "legendFormat": "convert" },
+        { "expr": "sum(rate(shortener_show_total{status=\"success\"}[1m]))", "legendFormat": "show" }
+      ],
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false } }
+    },
+    {
+      "id": 4,
+      "title": "请求成功率",
+      "type": "gauge",
+      "datasource": "Prometheus",
+      "gridPos": { "h": 4, "w": 6, "x": 18, "y": 1 },
+      "fieldConfig": { "defaults": { "unit": "percentunit", "min": 0, "max": 1 } },
+      "targets": [
+        {
+          "expr": "sum(rate(shortener_convert_total{status=\"success\"}[1m])) / (sum(rate(shortener_convert_total[1m])) + 0.001)",
+          "legendFormat": "convert"
+        },
+        {
+          "expr": "sum(rate(shortener_show_total{status=\"success\"}[1m])) / (sum(rate(shortener_show_total[1m])) + 0.001)",
+          "legendFormat": "show"
+        }
+      ]
+    },
+    {
+      "type": "row",
+      "title": "延迟分布",
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 9 },
+      "id": 10,
+      "collapsed": false
+    },
+    {
+      "id": 11,
+      "title": "请求延迟 P50/P95/P99",
+      "type": "timeseries",
+      "datasource": "Prometheus",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 10 },
+      "fieldConfig": {
+        "defaults": { "custom": { "drawStyle": "line" }, "unit": "s" }
+      },
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.50, sum(rate(shortener_request_duration_seconds_bucket[1m])) by (le, method, path))",
+          "legendFormat": "P50 {{method}} {{path}}"
+        },
+        {
+          "expr": "histogram_quantile(0.95, sum(rate(shortener_request_duration_seconds_bucket[1m])) by (le, method, path))",
+          "legendFormat": "P95 {{method}} {{path}}"
+        },
+        {
+          "expr": "histogram_quantile(0.99, sum(rate(shortener_request_duration_seconds_bucket[1m])) by (le, method, path))",
+          "legendFormat": "P99 {{method}} {{path}}"
+        }
+      ]
+    },
+    {
+      "id": 12,
+      "title": "LLM 调用延迟",
+      "type": "timeseries",
+      "datasource": "Prometheus",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 10 },
+      "fieldConfig": {
+        "defaults": { "custom": { "drawStyle": "line" }, "unit": "s" }
+      },
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.50, sum(rate(shortener_llm_latency_seconds_bucket[1m])) by (le, method))",
+          "legendFormat": "P50 {{method}}"
+        },
+        {
+          "expr": "histogram_quantile(0.95, sum(rate(shortener_llm_latency_seconds_bucket[1m])) by (le, method))",
+          "legendFormat": "P95 {{method}}"
+        },
+        {
+          "expr": "histogram_quantile(0.99, sum(rate(shortener_llm_latency_seconds_bucket[1m])) by (le, method))",
+          "legendFormat": "P99 {{method}}"
+        }
+      ]
+    },
+    {
+      "type": "row",
+      "title": "缓存与 Bloom Filter",
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 18 },
+      "id": 20,
+      "collapsed": false
+    },
+    {
+      "id": 21,
+      "title": "Bloom Filter 命中率",
+      "type": "timeseries",
+      "datasource": "Prometheus",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 19 },
+      "fieldConfig": { "defaults": { "custom": { "drawStyle": "line" } } },
+      "targets": [
+        { "expr": "rate(shortener_bloom_filter_hits{result=\"hit\"}[1m])", "legendFormat": "hit" },
+        { "expr": "rate(shortener_bloom_filter_hits{result=\"miss\"}[1m])", "legendFormat": "miss" }
+      ]
+    },
+    {
+      "type": "row",
+      "title": "Kafka",
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 27 },
+      "id": 30,
+      "collapsed": false
+    },
+    {
+      "id": 31,
+      "title": "Kafka 消息生产速率",
+      "type": "timeseries",
+      "datasource": "Prometheus",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 28 },
+      "fieldConfig": { "defaults": { "custom": { "drawStyle": "line" }, "unit": "msg/s" } },
+      "targets": [
+        {
+          "expr": "rate(shortener_kafka_produce_total[1m])",
+          "legendFormat": "{{topic}} ({{status}})"
+        }
+      ]
+    },
+    {
+      "id": 32,
+      "title": "Kafka 消息消费速率",
+      "type": "timeseries",
+      "datasource": "Prometheus",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 28 },
+      "fieldConfig": { "defaults": { "custom": { "drawStyle": "line" }, "unit": "msg/s" } },
+      "targets": [
+        {
+          "expr": "rate(shortener_kafka_consume_total[1m])",
+          "legendFormat": "{{topic}} ({{status}})"
+        }
+      ]
+    }
+  ],
+  "schemaVersion": 39,
+  "style": "dark",
+  "tags": ["shortener"],
+  "templating": { "list": [] },
+  "time": { "from": "now-15m", "to": "now" },
+  "timepicker": {},
+  "timezone": "",
+  "title": "Smart-Shortener 压测看板",
+  "uid": "shortener-bench",
+  "version": 1
+}

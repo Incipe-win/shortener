@@ -106,6 +106,69 @@ make backup     # 数据库备份
 make clean      # 清理 Docker 资源
 ```
 
+## 压力测试与性能分析
+
+### 安装压测工具
+
+```bash
+# Ubuntu/Debian
+sudo apt install -y wrk
+
+# macOS
+brew install wrk
+```
+
+### 启动监控栈（Prometheus + Grafana）
+
+```bash
+docker compose -f docker-compose.yaml -f docker-compose.bench.yaml up -d
+```
+
+启动后访问：
+- **Grafana**: http://localhost:3001 (admin/admin) — 自动加载压测看板
+- **Prometheus**: http://localhost:9090 — 查询指标
+- **pprof**: http://localhost:8888/debug/pprof/ — 性能分析
+
+### 一键压测
+
+```bash
+# 默认压测（4 线程，100 并发，30 秒）
+./scripts/bench/run.sh http://localhost:8888
+
+# 自定义参数
+BENCH_DURATION=60s BENCH_CONNECTIONS=500 BENCH_THREADS=8 \
+  ./scripts/bench/run.sh http://localhost:8888
+```
+
+### pprof 性能分析
+
+```bash
+# CPU 热点分析（30 秒采样）
+curl -o cpu.prof http://localhost:8888/debug/pprof/profile?seconds=30
+go tool pprof -http=:6060 cpu.prof
+
+# 内存分配分析
+curl -o mem.prof http://localhost:8888/debug/pprof/heap
+go tool pprof -http=:6060 mem.prof
+
+# 完整调用链追踪
+curl -o trace.out http://localhost:8888/debug/pprof/trace?seconds=10
+go tool trace trace.out
+```
+
+### 阶梯式 QPS 测试
+
+逐步增加并发连接数，找到系统瓶颈：
+
+```bash
+for conn in 10 50 100 200 500 1000; do
+  echo "=== Connections: $conn ==="
+  wrk -t4 -c$conn -d10s -s scripts/bench/convert.lua http://localhost:8888
+done
+```
+
+> 详见 `scripts/bench/README.md`
+
 ## 本地开发
 
 ### 后端

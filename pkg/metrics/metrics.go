@@ -83,6 +83,26 @@ var (
 			Help: "Total number of click events received",
 		},
 	)
+
+	// RequestDuration HTTP 请求耗时直方图
+	RequestDuration = prometheus.NewHistogramVec(
+		prometheus.HistogramOpts{
+			Name:    "shortener_request_duration_seconds",
+			Help:    "HTTP request latency in seconds",
+			Buckets: []float64{0.001, 0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1, 2.5, 5, 10},
+		},
+		[]string{"method", "path"},
+	)
+
+	// DBQueryDuration DB 查询耗时直方图
+	DBQueryDuration = prometheus.NewHistogramVec(
+		prometheus.HistogramOpts{
+			Name:    "shortener_db_duration_seconds",
+			Help:    "Database query latency in seconds",
+			Buckets: []float64{0.001, 0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1},
+		},
+		[]string{"query"},
+	)
 )
 
 func init() {
@@ -96,6 +116,8 @@ func init() {
 		KafkaConsumeTotal,
 		KafkaProduceLatency,
 		ClickEventTotal,
+		RequestDuration,
+		DBQueryDuration,
 	)
 }
 

@@ -2,11 +2,13 @@ package handler
 
 import (
 	"net/http"
+	"time"
 
 	"shortener/internal/logic"
 	"shortener/internal/middleware"
 	"shortener/internal/svc"
 	"shortener/internal/types"
+	"shortener/pkg/metrics"
 
 	"github.com/go-playground/validator/v10"
 	"github.com/zeromicro/go-zero/core/logx"
@@ -15,6 +17,11 @@ import (
 
 func ConvertHandler(svcCtx *svc.ServiceContext) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
+		start := time.Now()
+		defer func() {
+			metrics.RequestDuration.WithLabelValues("POST", "/convert").Observe(time.Since(start).Seconds())
+		}()
+
 		var req types.ConvertRequest
 		if err := httpx.Parse(r, &req); err != nil {
 			httpx.ErrorCtx(r.Context(), w, err)

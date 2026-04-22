@@ -25,6 +25,24 @@ go test ./internal/logic/...
 go test ./pkg/base62/...
 ```
 
+### Benchmarking & Profiling
+
+```bash
+# Start monitoring stack (Prometheus + Grafana)
+docker compose -f docker-compose.yaml -f docker-compose.bench.yaml up -d
+
+# Run load test (requires wrk: sudo apt install wrk)
+./scripts/bench/run.sh http://localhost:8888
+
+# pprof: CPU profile
+curl -o cpu.prof http://localhost:8888/debug/pprof/profile?seconds=30
+go tool pprof -http=:6060 cpu.prof
+
+# pprof: heap profile
+curl -o mem.prof http://localhost:8888/debug/pprof/heap
+go tool pprof -http=:6060 mem.prof
+```
+
 ### Frontend (React)
 
 ```bash
@@ -159,6 +177,7 @@ Executed automatically on first container startup via `docker-entrypoint-initdb.
 
 **Monitoring**:
 - `GET /metrics` — Prometheus metrics endpoint
+- `GET /debug/pprof/*` — Go pprof profiling endpoints (internal port :8888 only, not exposed via Nginx)
 
 ## Important Notes
 
@@ -167,3 +186,6 @@ Executed automatically on first container startup via `docker-entrypoint-initdb.
 - Config is loaded from `etc/shortener-api.yaml` with environment variable substitution (`conf.UseEnv()`).
 - The `BaseString` config field controls the base62 character set for short URL encoding.
 - Frontend dev proxy is configured in `web/vite.config.ts` to route `/api/*` and `/auth/*` to the Go backend.
+- pprof endpoints are registered in `shortener.go` but NOT exposed through Nginx — only accessible on the internal `:8888` port for security.
+- Benchmarking infrastructure uses `docker-compose.bench.yaml` overlay to add Prometheus + Grafana alongside the base stack. Grafana dashboards are auto-provisioned from `scripts/bench/grafana/provisioning/`.
+- Request duration histograms are recorded in `convertHandler`, `showHandler`, and `previewHandler` via `metrics.RequestDuration`. Queryable as `shortener_request_duration_seconds_bucket` in Prometheus.

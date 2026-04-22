@@ -1,0 +1,46 @@
+version: "3.8"
+
+# 压测/监控专用 compose 覆盖文件
+# 用法: docker compose -f docker-compose.yaml -f docker-compose.bench.yaml up -d
+
+services:
+  # ── Prometheus ────────────────────────────────
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: shortener-prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./scripts/bench/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data:/prometheus
+    command:
+      - "--config.file=/etc/prometheus/prometheus.yml"
+      - "--storage.tsdb.path=/prometheus"
+      - "--web.enable-lifecycle"
+    networks:
+      - shortener-net
+    restart: unless-stopped
+
+  # ── Grafana ───────────────────────────────────
+  grafana:
+    image: grafana/grafana:latest
+    container_name: shortener-grafana
+    ports:
+      - "3001:3000"
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: admin
+      GF_AUTH_ANONYMOUS_ENABLED: "true"
+      GF_AUTH_ANONYMOUS_ORG_ROLE: Admin
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./scripts/bench/grafana/provisioning:/etc/grafana/provisioning:ro
+    depends_on:
+      - prometheus
+    networks:
+      - shortener-net
+    restart: unless-stopped
+
+volumes:
+  prometheus_data:
+  grafana_data:

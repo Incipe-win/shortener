@@ -4,6 +4,7 @@ import (
 	"flag"
 	"fmt"
 	"net/http"
+	_ "net/http/pprof"
 
 	"shortener/internal/config"
 	"shortener/internal/consumer"
@@ -52,6 +53,18 @@ func main() {
 		Method:  http.MethodGet,
 		Path:    "/metrics",
 		Handler: promhttp.Handler().ServeHTTP,
+	})
+
+	// 注册 pprof 性能分析端点（仅开发/压测时启用）
+	server.AddRoute(rest.Route{
+		Method:  http.MethodGet,
+		Path:    "/debug/pprof/",
+		Handler: http.DefaultServeMux.ServeHTTP,
+	})
+	server.AddRoute(rest.Route{
+		Method:  http.MethodGet,
+		Path:    "/debug/pprof/:profile",
+		Handler: http.DefaultServeMux.ServeHTTP,
 	})
 
 	// 使用 ServiceGroup 管理 HTTP Server 和 Kafka Consumers 的生命周期
